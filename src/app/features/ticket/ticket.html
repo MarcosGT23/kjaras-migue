@@ -1,0 +1,94 @@
+<div id="ticket-print" style="display: none;">
+  <div class="font-mono w-[80mm] px-[6mm] text-xs leading-relaxed">
+    <!-- Header -->
+    <div class="mb-2 mt-2">
+      <h1 class="text-center text-lg font-bold mb-1">KJARAS RESTAURANT</h1>
+      <p class="text-center text-[10px]">Av. Principal #123, Santa Cruz</p>
+      <p class="text-center text-[10px]">Tel: 777-12345</p>
+      <div class="text-center my-1">================================</div>
+    </div>
+    
+    <!-- Información del pedido -->
+    <div class="my-2">
+      <div class="flex justify-between my-0.5">
+        <span>Fecha:</span>
+        <span>{{ ticketData.fecha }}</span>
+      </div>
+      <div class="flex justify-between my-0.5">
+        <span>Hora:</span>
+        <span>{{ ticketData.hora }}</span>
+      </div>
+      <div class="flex justify-between my-0.5">
+        <span>Mesa/Cliente:</span>
+        <span class="font-bold">{{ ticketData.mesa }}</span>
+      </div>
+      <div class="flex justify-between my-0.5" *ngIf="ticketData.tipoOrden">
+        <span>Tipo:</span>
+        <span class="font-bold">{{ ticketData.tipoOrden === 'para_llevar' ? 'PARA LLEVAR' : 'MESA' }}</span>
+      </div>
+      <div class="flex justify-between my-0.5">
+        <span>Pedido:</span>
+        <span>#{{ ticketData.pedidoId }}</span>
+      </div>
+      <div class="flex justify-between my-0.5" *ngIf="ticketData.usuario">
+        <span>Atendido por:</span>
+        <span>{{ ticketData.usuario }}</span>
+      </div>
+      <div class="text-center my-1">================================</div>
+    </div>
+    
+    <!-- Productos -->
+    <div class="my-2">
+      <div class="flex justify-between font-bold mb-1">
+        <span class="min-w-[30px]">Cant</span>
+        <span class="flex-1">Descripción</span>
+        <span class="text-right min-w-[50px]">P.Unit</span>
+        <span class="text-right min-w-[60px]">Total</span>
+      </div>
+      <div class="text-center my-1">--------------------------------</div>
+      <div *ngFor="let item of ticketData.items" class="my-1">
+        <div class="flex justify-between gap-1">
+          <span class="min-w-[30px]">{{ item.cantidad }}x</span>
+          <span class="flex-1">{{ item.nombre }}</span>
+          <span class="text-right min-w-[50px]">{{ item.precioUnitario.toFixed(2) }}</span>
+          <span class="text-right min-w-[60px]">{{ item.subtotal.toFixed(2) }} Bs</span>
+        </div>
+        <div *ngIf="item.notas" class="text-[10px] italic text-gray-600 ml-8">
+          Nota: {{ item.notas }}
+        </div>
+      </div>
+      <div class="text-center my-1">--------------------------------</div>
+    </div>
+    
+    <!-- Total y método de pago -->
+    <div class="my-2">
+      <div class="flex justify-between font-bold text-base my-1">
+        <span>TOTAL:</span>
+        <span class="text-lg">{{ ticketData.total.toFixed(2) }} Bs</span>
+      </div>
+      
+      <ng-container *ngIf="ticketData.metodoPago === 'efectivo' && ticketData.montoEntregado">
+        <div class="text-center my-1 text-xs">--------------------------------</div>
+        <div class="flex justify-between my-0.5">
+          <span>Efectivo:</span>
+          <span>{{ ticketData.montoEntregado.toFixed(2) }} Bs</span>
+        </div>
+        <div class="flex justify-between my-0.5 font-bold">
+          <span>Cambio:</span>
+          <span>{{ ticketData.cambio?.toFixed(2) }} Bs</span>
+        </div>
+      </ng-container>
+
+      <div class="text-center my-2 text-xs">
+        Método de Pago: {{ ticketData.metodoPago === 'efectivo' ? 'EFECTIVO' : ticketData.metodoPago === 'qr' ? 'QR / TRANSFERENCIA' : 'TARJETA' }}
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="mt-4">
+      <div class="text-center my-1">================================</div>
+      <p class="text-center font-bold my-1">¡GRACIAS POR SU PREFERENCIA!</p>
+      <div class="text-center my-1">================================</div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,178 @@
+/* ── Global Reset & Tokens ───────────────────────────────── */
+@import '@angular/material/prebuilt-themes/azure-blue.css';
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%; margin: 0; padding: 0;
+  font-family: 'Inter', 'Google Sans', 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: var(--mat-sys-surface, #f8fafd);
+  color: var(--mat-sys-on-surface, #1a1c20);
+}
+
+/* ── Scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,.12); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.2); }
+
+/* ── Angular Material Global Overrides ───────────────────── */
+
+/* Cards */
+.mat-mdc-card {
+  border-radius: 16px !important;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.04) !important;
+}
+.mat-mdc-card[appearance="outlined"] {
+  box-shadow: none !important;
+  border: 1.5px solid var(--mat-sys-outline-variant, #c4c6d0) !important;
+}
+
+/* Flat + stroked buttons */
+.mat-mdc-unelevated-button, .mat-mdc-raised-button {
+  border-radius: 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: .01em !important;
+}
+.mat-mdc-outlined-button {
+  border-radius: 14px !important;
+  font-weight: 600 !important;
+}
+
+/* Icon buttons */
+.mat-mdc-icon-button { transition: background .15s ease !important; }
+
+/* Form fields */
+.mat-mdc-form-field .mdc-notched-outline__leading { border-radius: 12px 0 0 12px !important; }
+.mat-mdc-form-field .mdc-notched-outline__trailing { border-radius: 0 12px 12px 0 !important; }
+
+/* Chips */
+.mdc-evolution-chip { border-radius: 10px !important; }
+.mat-mdc-chip { font-weight: 600 !important; }
+.mat-mdc-chip-option.mat-mdc-chip-selected {
+  font-weight: 700 !important;
+}
+
+/* Dialog */
+.mat-mdc-dialog-container .mdc-dialog__surface {
+  border-radius: 20px !important;
+  overflow: hidden;
+}
+
+/* ── Dark Theme Dialog (Admin) ────────────────────────────── */
+.dark-theme-dialog .mat-mdc-dialog-container .mdc-dialog__surface {
+  background: #1C1C24 !important;
+  border: 1px solid #2D2D3D;
+  border-radius: 20px !important;
+  box-shadow: 0 24px 64px rgba(0,0,0,.6) !important;
+}
+.dark-theme-dialog .mdc-dialog__title,
+.dark-theme-dialog .mdc-dialog__content {
+  color: #e2e8f0 !important;
+}
+/* Dark form fields inside dark dialogs */
+.dark-theme-dialog .mdc-notched-outline__leading,
+.dark-theme-dialog .mdc-notched-outline__notch,
+.dark-theme-dialog .mdc-notched-outline__trailing {
+  border-color: #2D2D3D !important;
+}
+.dark-theme-dialog .mdc-notched-outline__leading:hover,
+.dark-theme-dialog .mdc-notched-outline__notch:hover,
+.dark-theme-dialog .mdc-notched-outline__trailing:hover {
+  border-color: #6366f1 !important;
+}
+.dark-theme-dialog .mat-mdc-form-field.mat-focused .mdc-notched-outline__leading,
+.dark-theme-dialog .mat-mdc-form-field.mat-focused .mdc-notched-outline__notch,
+.dark-theme-dialog .mat-mdc-form-field.mat-focused .mdc-notched-outline__trailing {
+  border-color: #6366f1 !important;
+}
+.dark-theme-dialog .mdc-text-field--outlined { background: #1A1A24 !important; }
+.dark-theme-dialog .mat-mdc-input-element { color: #e2e8f0 !important; caret-color: #6366f1 !important; }
+.dark-theme-dialog .mat-mdc-floating-label, .dark-theme-dialog .mdc-floating-label { color: #64748b !important; }
+.dark-theme-dialog .mat-mdc-floating-label.mdc-floating-label--float-above { color: #818cf8 !important; }
+.dark-theme-dialog .mat-mdc-select-value { color: #e2e8f0 !important; }
+.dark-theme-dialog .mat-mdc-select-arrow { color: #64748b !important; }
+.dark-theme-dialog .mat-mdc-form-field-hint { color: #64748b !important; }
+
+/* Dark slide toggle override */
+.dark-theme-dialog .mat-mdc-slide-toggle .mdc-label { color: #cbd5e1 !important; }
+
+/* Dark divider */
+.dark-theme-dialog .mat-divider { border-color: #2D2D3D !important; }
+
+/* Dark select panel */
+.dark-mat-select-panel {
+  background: #1C1C24 !important;
+  border: 1px solid #2D2D3D !important;
+  border-radius: 12px !important;
+}
+.dark-mat-select-panel .mat-mdc-option { color: #cbd5e1 !important; }
+.dark-mat-select-panel .mat-mdc-option:hover { background: rgba(99,102,241,.12) !important; }
+.dark-mat-select-panel .mat-mdc-option.mdc-list-item--selected { background: rgba(99,102,241,.2) !important; color: #818cf8 !important; }
+
+/* Divider */
+.mat-divider { border-color: var(--mat-sys-outline-variant, #c4c6d0) !important; }
+
+/* ── Utility helpers ─────────────────────────────────────── */
+
+/* Status chips */
+.chip-success {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 10px; border-radius: 99px;
+  background: #dcfce7; color: #15803d;
+  font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+}
+.chip-danger {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 10px; border-radius: 99px;
+  background: #fee2e2; color: #b91c1c;
+  font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+}
+.chip-warn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 10px; border-radius: 99px;
+  background: #fef9c3; color: #854d0e;
+  font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+}
+
+/* ── Page wrapper ────────────────────────────────────────── */
+.page-wrapper { min-height: 100%; background: var(--mat-sys-surface-container-lowest); padding: 2rem; }
+
+/* ── Print Styles (Ticket Térmico 80mm) ──────────────────── */
+@media print {
+  /* Ocultar todo el contenido de la app */
+  body * { visibility: hidden !important; }
+
+  /* Mostrar SOLO el ticket */
+  #ticket-print, #ticket-print * {
+    visibility: visible !important;
+  }
+
+  #ticket-print {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Configuración de página para impresora térmica */
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  /* Ocultar overlays de Angular Material (modales, etc) */
+  .cdk-overlay-container,
+  .cdk-overlay-backdrop,
+  .mat-mdc-dialog-container {
+    display: none !important;
+  }
+}

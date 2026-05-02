@@ -1,0 +1,7 @@
+/* Estilos del componente ticket */
+/* Los estilos de impresión principales están en src/styles.css (global) */
+
+/* Asegurar que el ticket se muestre correctamente al imprimir */
+:host {
+  display: block;
+}

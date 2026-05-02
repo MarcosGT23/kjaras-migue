@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Kjaras Doña Migue</string>
+    <string name="title_activity_main">Kjaras Doña Migue</string>
+    <string name="package_name">com.kjaras.app</string>
+    <string name="custom_url_scheme">com.kjaras.app</string>
+</resources>
