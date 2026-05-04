@@ -171,8 +171,8 @@ export class CierreComponent {
     this.loading.set(true); this.err.set('');
     try { 
       await new Promise(r => setTimeout(r, 900)); 
-      this.cajaService.cerrarCaja();
-      this.router.navigate(['/login']); 
+      await this.cajaService.cerrarCaja();
+      this.router.navigate(['/caja/apertura']); 
     }
     catch { this.err.set('Error al cerrar turno. Intenta de nuevo.'); }
     finally { this.loading.set(false); }

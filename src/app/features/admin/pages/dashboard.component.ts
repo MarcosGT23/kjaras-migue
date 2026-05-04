@@ -355,13 +355,43 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private async cargarDatosIniciales() {
-    this.estadisticas.set({ productosInventario: 124, usuariosActivos: 12, ventasHoy: 45, ingresosHoy: 12480.32 });
-    this.ultimasVentas.set([
-      { id: 2392, sucursal: 'Carrefour Market', hora: '09:18', metodo: 'tarjeta', total: 56.40 },
-      { id: 2393, sucursal: 'Uber', hora: '22:05', metodo: 'qr', total: 18.90 },
-      { id: 6035, sucursal: 'Starbucks', hora: '08:47', metodo: 'efectivo', total: 6.80 },
-      { id: 6036, sucursal: 'Netflix', hora: '19:32', metodo: 'transferencia', total: 15.99 }
-    ]);
+    try {
+      const [prods, users, pedidos] = await Promise.all([
+        this.supabase.getProductos(),
+        this.supabase.getUsuariosAdmin(),
+        this.supabase.getPedidos()
+      ]);
+
+      const hoy = new Date();
+      const inicioHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()).getTime();
+
+      const pedidosHoy = pedidos.filter(p => {
+        const d = new Date(p.created_at).getTime();
+        return d >= inicioHoy;
+      });
+
+      const ingresosHoy = pedidosHoy.reduce((sum, p) => sum + p.total, 0);
+
+      this.estadisticas.set({
+        productosInventario: prods.length,
+        usuariosActivos: users.length,
+        ventasHoy: pedidosHoy.length,
+        ingresosHoy: ingresosHoy
+      });
+
+      // Últimas ventas ordenadas por fecha
+      const ultimas = pedidos.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10);
+      
+      this.ultimasVentas.set(ultimas.map((p: any) => ({
+        id: p.id,
+        sucursal: p.apertura_cajas?.sucursales?.nombre || `Sucursal #${p.apertura_cajas?.sucursal_id || 'N/A'}`,
+        hora: new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        metodo: p.pagos && p.pagos.length > 0 ? p.pagos[0].metodo : 'efectivo',
+        total: p.total
+      })));
+    } catch (error) {
+      console.error('Error cargando datos del dashboard', error);
+    }
   }
 
   private conectarRadarEnVivo() {

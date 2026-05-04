@@ -1,7 +1,7 @@
 import { MatDialog } from '@angular/material/dialog';
 import { CobroModalComponent } from '../components/cobro-modal.component';
 import { CajaCerradaModalComponent } from '../components/caja-cerrada-modal.component';
-import { Component, computed, signal, OnInit, inject, ViewChild } from '@angular/core';
+import { Component, computed, signal, OnInit, inject, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { CajaService } from '../../../core/caja.service';
 import { SupabaseService } from '../../../core/supabase.service';
 import { AuthService } from '../../../core/auth.service';
@@ -153,7 +153,25 @@ interface Categoria { id: number; nombre: string; icon: string; }
       </aside>
 
       <!-- Ticket oculto para imprimir -->
-      <app-ticket [ticketData]="ticketActual"></app-ticket>
+      @if (ticketActual) {
+        <app-ticket [ticketData]="ticketActual"></app-ticket>
+      }
+
+      <!-- ════════ OVERLAY: Animación de Éxito ════════ -->
+      @if (showSuccess()) {
+        <div class="success-overlay" (animationend)="onOverlayEnd($event)">
+          <div class="success-card">
+            <div class="success-circle">
+              <svg class="checkmark" viewBox="0 0 52 52">
+                <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                <path class="checkmark-check" fill="none" d="M14 27 l8 8 l16-16"/>
+              </svg>
+            </div>
+            <p class="success-title">¡Pedido registrado!</p>
+            <p class="success-sub">La venta se guardó correctamente en la base de datos.</p>
+          </div>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -167,7 +185,57 @@ interface Categoria { id: number; nombre: string; icon: string; }
 
     .pos-root { 
       display: flex; width: 100%; height: 100%; 
-      background: transparent; /* Fondo proveniente de layout #F2F2F7 */
+      background: transparent;
+      position: relative; /* Necesario para el overlay */
+    }
+
+    /* ════════ SUCCESS OVERLAY ════════ */
+    .success-overlay {
+      position: absolute; inset: 0; z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(6px);
+      animation: fadeOut 0.4s ease 2.2s forwards;
+    }
+    .success-card {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      background: #fff; border-radius: 24px;
+      padding: 40px 48px; box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+      animation: popIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+    .success-circle {
+      width: 80px; height: 80px;
+    }
+    /* SVG Checkmark */
+    .checkmark { width: 80px; height: 80px; }
+    .checkmark-circle {
+      stroke: #34C759; stroke-width: 2;
+      stroke-dasharray: 166; stroke-dashoffset: 166;
+      animation: strokeCircle 0.6s cubic-bezier(0.65,0,0.45,1) 0.1s forwards;
+    }
+    .checkmark-check {
+      stroke: #34C759; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+      stroke-dasharray: 48; stroke-dashoffset: 48;
+      animation: strokeCheck 0.4s cubic-bezier(0.65,0,0.45,1) 0.65s forwards;
+    }
+    .success-title {
+      font-size: 1.3rem; font-weight: 700; color: #1C1C1E; margin: 4px 0 0;
+    }
+    .success-sub {
+      font-size: 0.9rem; color: #6B6B6B; margin: 0; text-align: center;
+    }
+    @keyframes strokeCircle {
+      to { stroke-dashoffset: 0; }
+    }
+    @keyframes strokeCheck {
+      to { stroke-dashoffset: 0; }
+    }
+    @keyframes popIn {
+      from { transform: scale(0.6); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    @keyframes fadeOut {
+      to { opacity: 0; pointer-events: none; }
     }
 
     /* ════════ CATALOGO ════════ */
@@ -367,6 +435,7 @@ export class VentaPosComponent implements OnInit {
   private cajaService = inject(CajaService);
   private supabase = inject(SupabaseService);
   private auth = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
 
   productos  = signal<Producto[]>([]);
   categorias = signal<Categoria[]>([]);
@@ -375,9 +444,8 @@ export class VentaPosComponent implements OnInit {
   busqueda   = signal('');
   busquedaVal = '';
 
-  ticketActual: TicketData = {
-    fecha: '', hora: '', mesa: '', pedidoId: 0, items: [], total: 0, metodoPago: 'efectivo'
-  };
+  ticketActual: any = null;
+  showSuccess = signal(false);
 
   private contadorPedido = 1000;
 
@@ -392,22 +460,33 @@ export class VentaPosComponent implements OnInit {
   totalItems  = computed(() => this.carrito().reduce((s, i) => s + i.cantidad, 0));
   cantCart = (id: number) => this.carrito().find(i => i.producto.id === id)?.cantidad ?? 0;
 
-  ngOnInit() {
-    this.categorias.set([
-      { id: 1, nombre: 'Kjaras',  icon: 'local_restaurant' },
-      { id: 2, nombre: 'Bebidas', icon: 'local_cafe'       },
-      { id: 3, nombre: 'Extras',  icon: 'add'              },
-    ]);
-    this.productos.set([
-      { id: 1, nombre: 'Kjara Especial Doña Migue', precio_base: 45, categoria_id: 1, emoji: '🥩' },
-      { id: 2, nombre: 'Kjara Pequeña',             precio_base: 30, categoria_id: 1, emoji: '🍖' },
-      { id: 3, nombre: 'Kjara con Mote y Chorizo',  precio_base: 55, categoria_id: 1, emoji: '🫕' },
-      { id: 4, nombre: 'Porción de Mote',           precio_base: 10, categoria_id: 3, emoji: '🌽' },
-      { id: 5, nombre: 'Chorizo Extra',             precio_base: 12, categoria_id: 3, emoji: '🌭' },
-      { id: 6, nombre: 'Coca Quina 2L',             precio_base: 15, categoria_id: 2, emoji: '🥤' },
-      { id: 7, nombre: 'Jarra Mocochinchi',         precio_base: 18, categoria_id: 2, emoji: '🍹' },
-      { id: 8, nombre: 'Agua Mineral 600ml',        precio_base:  8, categoria_id: 2, emoji: '💧' },
-    ]);
+  async ngOnInit() {
+    try {
+      // Cargar categorías y productos desde Supabase
+      const [catsDb, prodsDb] = await Promise.all([
+        this.supabase.getCategorias(),
+        this.supabase.getProductos()
+      ]);
+
+      // Mapear categorías (asumiendo que en DB no hay icono, asignamos uno genérico por ahora)
+      this.categorias.set(catsDb.map((c: any) => ({
+        id: c.id,
+        nombre: c.nombre,
+        icon: c.nombre === 'Kjaras' ? 'local_restaurant' : (c.nombre === 'Bebidas' ? 'local_cafe' : 'add')
+      })));
+
+      // Mapear productos
+      this.productos.set(prodsDb.map((p: any) => ({
+        id: p.id,
+        nombre: p.nombre,
+        precio_base: p.precio_base,
+        categoria_id: p.categoria_id,  // Campo directo desde la DB
+        emoji: p.emoji || '🍽️'
+      })));
+    } catch (error) {
+      console.error('Error al cargar catálogo POS:', error);
+      alert('Error cargando los productos. Verifica tu conexión a la base de datos.');
+    }
   }
 
   add(p: Producto) {
@@ -452,6 +531,8 @@ export class VentaPosComponent implements OnInit {
             metodo_pago: r.metodo,
             estado: 'pagado',
             sucursal_id: sucursal_id,
+            cliente: r.cliente?.trim() || undefined,
+            tipo_pedido: r.tipoPedido,
             detalles: detalles
           });
 
@@ -474,13 +555,24 @@ export class VentaPosComponent implements OnInit {
             cambio: r.cambio
           };
 
-          this.ticketRef.imprimir();
-          this.carrito.set([]); 
+          // Mostrar animación de éxito
+          this.showSuccess.set(true);
+          setTimeout(() => {
+            this.cdr.detectChanges(); // Asegurar que Angular renderice el ticket antes de imprimir
+            this.ticketRef?.imprimir();
+            this.carrito.set([]);
+          }, 1800);
         } catch (error) {
           console.error('Error al registrar pedido', error);
           alert('Error al registrar pedido. Inténtalo de nuevo.');
         }
       }
     });
+  }
+
+  onOverlayEnd(event: AnimationEvent) {
+    if ((event as any).animationName === 'fadeOut') {
+      this.showSuccess.set(false);
+    }
   }
 }

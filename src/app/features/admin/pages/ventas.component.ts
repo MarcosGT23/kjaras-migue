@@ -36,23 +36,7 @@ interface ResumenSucursal {
   ticketPromedio: number;
 }
 
-// ─── Demo data (fallback si Supabase no tiene datos) ───────────
-const DEMO_PEDIDOS: Pedido[] = [
-  { id: 3821, created_at: new Date(Date.now() - 1000 * 60 * 4).toISOString(),  total: 56.40, metodo_pago: 'tarjeta',       estado: 'completado', sucursal_id: 1, sucursal_nombre: 'Sucursal Central', items: [{ nombre: 'Kjara Mixta', cantidad: 2, precio_unitario: 22.00 }, { nombre: 'Refresco', cantidad: 2, precio_unitario: 6.20 }] },
-  { id: 3820, created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(), total: 34.00, metodo_pago: 'efectivo',      estado: 'completado', sucursal_id: 2, sucursal_nombre: 'Sucursal Norte',   items: [{ nombre: 'Kjara Especial', cantidad: 1, precio_unitario: 28.00 }, { nombre: 'Agua', cantidad: 2, precio_unitario: 3.00 }] },
-  { id: 3819, created_at: new Date(Date.now() - 1000 * 60 * 25).toISOString(), total: 18.90, metodo_pago: 'qr',            estado: 'completado', sucursal_id: 1, sucursal_nombre: 'Sucursal Central', items: [{ nombre: 'Kjara Simple', cantidad: 1, precio_unitario: 18.90 }] },
-  { id: 3818, created_at: new Date(Date.now() - 1000 * 60 * 38).toISOString(), total: 72.00, metodo_pago: 'transferencia', estado: 'completado', sucursal_id: 3, sucursal_nombre: 'Sucursal Sur',     items: [{ nombre: 'Kjara Mixta', cantidad: 3, precio_unitario: 22.00 }, { nombre: 'Refresco', cantidad: 3, precio_unitario: 2.00 }] },
-  { id: 3817, created_at: new Date(Date.now() - 1000 * 60 * 55).toISOString(), total: 45.00, metodo_pago: 'efectivo',      estado: 'completado', sucursal_id: 2, sucursal_nombre: 'Sucursal Norte',   items: [{ nombre: 'Kjara Especial', cantidad: 2, precio_unitario: 28.00 }] },
-  { id: 3816, created_at: new Date(Date.now() - 1000 * 60 * 70).toISOString(), total: 22.00, metodo_pago: 'qr',            estado: 'completado', sucursal_id: 1, sucursal_nombre: 'Sucursal Central', items: [{ nombre: 'Kjara Mixta', cantidad: 1, precio_unitario: 22.00 }] },
-  { id: 3815, created_at: new Date(Date.now() - 1000 * 60 * 90).toISOString(), total: 30.00, metodo_pago: 'tarjeta',       estado: 'completado', sucursal_id: 3, sucursal_nombre: 'Sucursal Sur',     items: [{ nombre: 'Combo Familiar', cantidad: 1, precio_unitario: 30.00 }] },
-  { id: 3814, created_at: new Date(Date.now() - 1000 * 60 * 115).toISOString(),total: 15.99, metodo_pago: 'transferencia', estado: 'completado', sucursal_id: 2, sucursal_nombre: 'Sucursal Norte',   items: [{ nombre: 'Kjara Simple', cantidad: 1, precio_unitario: 12.00 }, { nombre: 'Jugo', cantidad: 1, precio_unitario: 3.99 }] },
-];
-
-const DEMO_SUCURSALES: ResumenSucursal[] = [
-  { id: 1, nombre: 'Sucursal Central', activa: true,  totalDia: 0, cantidadVentas: 0, ticketPromedio: 0 },
-  { id: 2, nombre: 'Sucursal Norte',   activa: true,  totalDia: 0, cantidadVentas: 0, ticketPromedio: 0 },
-  { id: 3, nombre: 'Sucursal Sur',     activa: false, totalDia: 0, cantidadVentas: 0, ticketPromedio: 0 },
-];
+// Datos reales cargados desde Supabase
 
 @Component({
   selector: 'app-ventas',
@@ -875,16 +859,19 @@ export class VentasComponent implements OnInit, OnDestroy {
   private async cargarDatos() {
     this.cargando.set(true);
     try {
-      const raw = await this.supabase.getPedidos(undefined, 200);
-      const pedidos = raw.map((p: any) => this.mapearPedido(p));
+      const [rawPedidos, rawSucursales] = await Promise.all([
+        this.supabase.getPedidos(undefined, 200),
+        this.supabase.getSucursales()
+      ]);
+      const pedidos = rawPedidos.map((p: any) => this.mapearPedido(p));
       this.pedidosTodos.set(pedidos);
       this.pedidosLive.set([...pedidos]);
-      this.calcularResumenSucursales(pedidos);
+      this.calcularResumenSucursales(pedidos, rawSucursales);
     } catch (err) {
-      console.warn('Supabase no disponible o sin datos, usando demo:', err);
-      this.pedidosTodos.set(DEMO_PEDIDOS);
-      this.pedidosLive.set([...DEMO_PEDIDOS]);
-      this.calcularResumenSucursales(DEMO_PEDIDOS);
+      console.warn('Error cargando ventas:', err);
+      this.pedidosTodos.set([]);
+      this.pedidosLive.set([]);
+      this.calcularResumenSucursales([], []);
     } finally {
       this.cargando.set(false);
     }
@@ -895,11 +882,11 @@ export class VentasComponent implements OnInit, OnDestroy {
       id:             raw.id,
       created_at:     raw.created_at,
       total:          Number(raw.total) || 0,
-      metodo_pago:    raw.metodo_pago || 'efectivo',
+      metodo_pago:    raw.pagos && raw.pagos.length > 0 ? raw.pagos[0].metodo : 'efectivo',
       estado:         raw.estado || 'completado',
-      sucursal_id:    raw.sucursal_id,
-      sucursal_nombre: raw.sucursales?.nombre || 'Sin sucursal',
-      items: (raw.detalle_pedido || []).map((d: any) => ({
+      sucursal_id:    raw.apertura_cajas?.sucursal_id || 0,
+      sucursal_nombre: raw.apertura_cajas?.sucursales?.nombre || 'Sin sucursal',
+      items: (raw.detalle_pedidos || []).map((d: any) => ({
         nombre:          d.productos?.nombre || 'Producto',
         cantidad:        d.cantidad || 1,
         precio_unitario: Number(d.precio_unitario) || 0
@@ -907,7 +894,7 @@ export class VentasComponent implements OnInit, OnDestroy {
     };
   }
 
-  private calcularResumenSucursales(pedidos: Pedido[]) {
+  private calcularResumenSucursales(pedidos: Pedido[], sucursalesDb: any[]) {
     const hoy = new Date(); hoy.setHours(0,0,0,0);
     const map = new Map<number, ResumenSucursal>();
 
@@ -926,9 +913,11 @@ export class VentasComponent implements OnInit, OnDestroy {
 
     map.forEach(s => { s.ticketPromedio = s.cantidadVentas > 0 ? s.totalDia / s.cantidadVentas : 0; });
 
-    // Añadir sucursales del demo que no tengan ventas
-    DEMO_SUCURSALES.forEach(ds => {
-      if (!map.has(ds.id)) map.set(ds.id, { ...ds });
+    // Añadir sucursales de la BD que no tengan ventas hoy
+    sucursalesDb.forEach(ds => {
+      if (!map.has(ds.id)) map.set(ds.id, { 
+        id: ds.id, nombre: ds.nombre, activa: ds.activa, totalDia: 0, cantidadVentas: 0, ticketPromedio: 0 
+      });
     });
 
     this.resumenSucursales.set(Array.from(map.values()).sort((a,b) => b.totalDia - a.totalDia));
@@ -940,9 +929,9 @@ export class VentasComponent implements OnInit, OnDestroy {
         id:             raw.id,
         created_at:     raw.created_at || new Date().toISOString(),
         total:          Number(raw.total) || 0,
-        metodo_pago:    raw.metodo_pago || 'efectivo',
+        metodo_pago:    'efectivo', // Valor temporal hasta que cargue
         estado:         raw.estado || 'completado',
-        sucursal_id:    raw.sucursal_id,
+        sucursal_id:    0, // Valor temporal hasta recargar
         sucursal_nombre: 'En proceso...',
         items:          [],
         isNew:          true

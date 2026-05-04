@@ -8,23 +8,37 @@ import { environment } from '../../environments/environment';
 })
 export class SupabaseService {
   private supabase!: SupabaseClient;
+  // Cliente admin público para que otros servicios puedan hacer writes sin RLS
+  adminClient!: SupabaseClient;
 
   constructor() {
-    // Inicializamos el cliente con las credenciales
-    this.supabase = createClient(
+    const opts = {
+      auth: {
+        // Evita el conflicto entre zone.js y navigator.locks
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        lock: <R>(_name: string, _timeout: number, fn: () => Promise<R>): Promise<R> => fn()
+      }
+    };
+
+    this.supabase = createClient(environment.supabase.url, environment.supabase.key, opts);
+
+    // Cliente con permisos absolutos para escritura (dev local únicamente)
+    this.adminClient = createClient(
       environment.supabase.url,
-      environment.supabase.key,
+      environment.supabase.serviceRoleKey,
       {
         auth: {
-          // Evita el conflicto entre zone.js y navigator.locks
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          lock: <R>(_name: string, _timeout: number, fn: () => Promise<R>): Promise<R> => fn()
+          lock: <R>(_name: string, _timeout: number, fn: () => Promise<R>): Promise<R> => fn(),
+          persistSession: false
+        },
+        global: {
+          headers: { Authorization: `Bearer ${environment.supabase.serviceRoleKey}` }
         }
       }
     );
   }
 
-  // Getter para usar el cliente en nuestros componentes
+  // Getter para usar el cliente de lectura en componentes
   get client(): SupabaseClient {
     return this.supabase;
   }
@@ -46,10 +60,12 @@ export class SupabaseService {
         id, 
         nombre, 
         precio_base, 
+        categoria_id,
         activo, 
-        categorias (nombre),
+        categorias (id, nombre),
         inventario (stock_actual)
       `)
+      .eq('activo', true)
       .order('id', { ascending: false });
 
     if (error) throw error;
@@ -274,13 +290,18 @@ export class SupabaseService {
         id,
         created_at,
         total,
-        metodo_pago,
         estado,
-        sucursal_id,
-        sucursales (id, nombre),
-        detalle_pedido (
+        cliente_nombre,
+        numero_mesa,
+        apertura_cajas (
+          sucursal_id,
+          sucursales (id, nombre)
+        ),
+        pagos (metodo),
+        detalle_pedidos (
           cantidad,
           precio_unitario,
+          subtotal,
           productos (nombre)
         )
       `)
@@ -288,7 +309,7 @@ export class SupabaseService {
       .limit(limite);
 
     if (sucursalId !== undefined) {
-      query = query.eq('sucursal_id', sucursalId);
+      query = query.eq('apertura_cajas.sucursal_id', sucursalId);
     }
 
     const { data, error } = await query;
@@ -307,8 +328,10 @@ export class SupabaseService {
       .from('pedidos')
       .select(`
         total,
-        sucursal_id,
-        sucursales (id, nombre, activa)
+        apertura_cajas (
+          sucursal_id,
+          sucursales (id, nombre, activa)
+        )
       `)
       .gte('created_at', hoy.toISOString());
 
@@ -340,36 +363,71 @@ export class SupabaseService {
     metodo_pago: string;
     estado: string;
     sucursal_id: number;
+    cliente?: string;
+    tipo_pedido?: string;
     detalles: { producto_id: number; cantidad: number; precio_unitario: number }[];
   }) {
+    // 0. Obtener la caja abierta para la sucursal
+    const { data: apertura } = await this.adminClient
+      .from('apertura_cajas')
+      .select('id')
+      .eq('sucursal_id', datosPedido.sucursal_id)
+      .eq('estado', 'abierta')
+      .single();
+
+    if (!apertura) {
+      throw new Error("No hay una caja abierta para esta sucursal. Abre caja primero.");
+    }
+
     // 1. Insertar el pedido principal
-    const { data: pedidoNuevo, error: errPedido } = await this.client
+    const { data: pedidoNuevo, error: errPedido } = await this.adminClient
       .from('pedidos')
       .insert({
         total: datosPedido.total,
-        metodo_pago: datosPedido.metodo_pago,
         estado: datosPedido.estado,
-        sucursal_id: datosPedido.sucursal_id
+        apertura_caja_id: apertura.id,
+        cliente_nombre: datosPedido.cliente || null,
+        numero_mesa: datosPedido.tipo_pedido === 'llevar' ? null : 1
       })
       .select()
       .single();
 
     if (errPedido || !pedidoNuevo) throw errPedido || new Error("Error al crear pedido");
 
-    // 2. Insertar el detalle
+    // 2. Insertar el pago
+    const { error: errPago } = await this.adminClient
+      .from('pagos')
+      .insert({
+        pedido_id: pedidoNuevo.id,
+        metodo: datosPedido.metodo_pago,
+        monto: datosPedido.total
+      });
+
+    if (errPago) throw errPago;
+
+    // 3. Insertar el detalle
     const detallesAInsertar = datosPedido.detalles.map(d => ({
       pedido_id: pedidoNuevo.id,
       producto_id: d.producto_id,
       cantidad: d.cantidad,
       precio_unitario: d.precio_unitario
+      // subtotal es columna generada por la DB (no se inserta manualmente)
     }));
 
-    const { error: errDetalle } = await this.client
-      .from('detalle_pedido')
+    const { error: errDetalle } = await this.adminClient
+      .from('detalle_pedidos')
       .insert(detallesAInsertar);
 
     if (errDetalle) throw errDetalle;
     
     return pedidoNuevo;
+  }
+
+  async anularPedido(id: number) {
+    const { error } = await this.adminClient
+      .from('pedidos')
+      .update({ estado: 'anulado' })
+      .eq('id', id);
+    if (error) throw error;
   }
 }

@@ -1,8 +1,10 @@
-import { Component, computed, inject, signal, OnInit, ViewChild } from '@angular/core';
+import { Component, computed, inject, signal, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { CommonModule, DecimalPipe, DatePipe, TitleCasePipe } from '@angular/common';
 import { MatDialog } from '@angular/material/dialog';
 import { EdicionPedidoModalComponent } from '../components/edicion-pedido-modal.component';
 import { TicketComponent, TicketData } from '../../ticket/ticket';
+import { SupabaseService } from '../../../core/supabase.service';
+import { AuthService } from '../../../core/auth.service';
 
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -57,7 +59,7 @@ interface Pedido    { id: number; created_at: string; total: number; metodo_pago
                     <span class="ios-badge" [style]="metodoBadge(p.metodo_pago)">{{ p.metodo_pago | titlecase }}</span>
                     @if (p.tipo_pedido) {
                       <span class="ios-badge badge-gray">
-                        <mat-icon class="!text-[12px] align-text-bottom mr-1">{{ p.tipo_pedido === 'mesa' ? 'restaurant' : 'takeout_dining' }}</mat-icon>
+                        <mat-icon class="!text-[12px] align-text-bottom mr-1">{{ p.tipo_pedido === 'mesa' ? 'restaurant' : 'directions_walk' }}</mat-icon>
                         {{ p.tipo_pedido === 'mesa' ? 'Mesa' : 'Llevar' }}
                       </span>
                     }
@@ -239,9 +241,12 @@ interface Pedido    { id: number; created_at: string; total: number; metodo_pago
     .empty-sub   { margin: 4px 0 0; font-size: 0.95rem; color: #8E8E93; }
   `]
 })
-export class HistorialComponent implements OnInit {
+export class HistorialComponent implements OnInit, OnDestroy {
   @ViewChild(TicketComponent) ticketRef!: TicketComponent;
   private dialog = inject(MatDialog);
+  private supabase = inject(SupabaseService);
+  private auth = inject(AuthService);
+  private canal: any = null;
   
   pedidos   = signal<Pedido[]>([]);
   loading   = signal(false);
@@ -249,7 +254,17 @@ export class HistorialComponent implements OnInit {
 
   ticketActual: TicketData = { fecha: '', hora: '', mesa: '', pedidoId: 0, items: [], total: 0, metodoPago: 'efectivo' };
 
-  ngOnInit() { this.loadDemo(); }
+  ngOnInit() {
+    this.loadPedidos();
+    // Escuchar nuevos pedidos en tiempo real para refrescar la lista
+    this.canal = this.supabase.escucharVentasEnVivo(() => {
+      this.loadPedidos();
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.canal) this.supabase.client.removeChannel(this.canal);
+  }
 
   statusStyle(e: string) {
     return e === 'anulado'
@@ -265,9 +280,15 @@ export class HistorialComponent implements OnInit {
     return map[m] ?? 'background:#F2F2F7;color:#8E8E93';
   }
 
-  anular(p: Pedido) {
+  async anular(p: Pedido) {
     if (!confirm(`¿Anular venta #${p.id}?`)) return;
-    this.pedidos.update(l => l.map(x => x.id === p.id ? { ...x, estado: 'anulado' } : x));
+    try {
+      await this.supabase.anularPedido(p.id);
+      this.pedidos.update(l => l.map(x => x.id === p.id ? { ...x, estado: 'anulado' } : x));
+    } catch (e) {
+      console.error('Error al anular pedido', e);
+      alert('No se pudo anular el pedido.');
+    }
   }
 
   editarPedido(p: Pedido) {
@@ -285,12 +306,53 @@ export class HistorialComponent implements OnInit {
     });
   }
 
-  private loadDemo() {
-    this.pedidos.set([
-      { id: 1003, created_at: new Date().toISOString(), total: 90, metodo_pago: 'efectivo', estado: 'pagado', cliente: 'María López', tipo_pedido: 'mesa', items: [{ nombre: 'Kjara Especial', cantidad: 2, precio_unitario: 45 }] },
-      { id: 1002, created_at: new Date(Date.now()-1800000).toISOString(), total: 33, metodo_pago: 'qr', estado: 'pagado', cliente: 'Cliente General', tipo_pedido: 'llevar', items: [{ nombre: 'Kjara Pequeña', cantidad: 1, precio_unitario: 30 }, { nombre: 'Chorizo Extra', cantidad: 1, precio_unitario: 3 }] },
-      { id: 1001, created_at: new Date(Date.now()-3600000).toISOString(), total: 45, metodo_pago: 'tarjeta', estado: 'anulado', cliente: 'Carlos Vargas', tipo_pedido: 'mesa', items: [{ nombre: 'Kjara Especial', cantidad: 1, precio_unitario: 45 }] },
-    ]);
+  private async loadPedidos() {
+    this.loading.set(true);
+    try {
+      const dbPedidos = await this.supabase.getPedidos();
+      // Filtrar por la sucursal activa del usuario
+      const sucursalId = this.auth.userSucursal() || 1;
+      
+
+      const filtered = dbPedidos.filter((p: any) => {
+        // apertura_cajas puede ser un objeto o array según la FK de Supabase
+        const apertura = Array.isArray(p.apertura_cajas) ? p.apertura_cajas[0] : p.apertura_cajas;
+        return apertura?.sucursal_id === sucursalId;
+      });
+      
+      const mapeados = filtered.map((p: any) => {
+        // apertura_cajas puede ser objeto o array
+        const apertura = Array.isArray(p.apertura_cajas) ? p.apertura_cajas[0] : p.apertura_cajas;
+        // pagos puede ser objeto o array
+        const primerPago = Array.isArray(p.pagos) ? p.pagos[0] : p.pagos;
+        // detalle_pedidos siempre debe ser array
+        const detalles: any[] = Array.isArray(p.detalle_pedidos) ? p.detalle_pedidos : (p.detalle_pedidos ? [p.detalle_pedidos] : []);
+
+        return {
+          id: p.id,
+          created_at: p.created_at,
+          total: p.total,
+          metodo_pago: primerPago?.metodo || 'efectivo',
+          estado: p.estado,
+          cliente: p.cliente_nombre || '',
+          tipo_pedido: p.numero_mesa ? 'mesa' : 'llevar',
+          items: detalles.map((det: any) => {
+            // productos puede ser objeto o array en Supabase
+            const prod = Array.isArray(det.productos) ? det.productos[0] : det.productos;
+            return {
+              nombre: prod?.nombre || 'Producto',
+              cantidad: det.cantidad || 1,
+              precio_unitario: Number(det.precio_unitario) || 0
+            };
+          })
+        };
+      });
+      this.pedidos.set(mapeados as any[]);
+    } catch (e) {
+      console.error('Error cargando historial', e);
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   reimprimir(p: Pedido) {

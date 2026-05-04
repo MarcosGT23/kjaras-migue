@@ -253,9 +253,8 @@ export class CobroModalComponent {
   errMsg  = signal('');
 
   metodos = [
-    { key: 'efectivo' as const, label: 'Efectivo',   icon: 'payments',    bg: '#E5F4EA', fg: '#34C759' }, // iOS Green
-    { key: 'qr'       as const, label: 'QR / Trans.', icon: 'qr_code_2',  bg: '#FFF4E5', fg: '#FF9500' }, // iOS Orange
-    { key: 'tarjeta'  as const, label: 'Tarjeta',    icon: 'credit_card', bg: '#F2E5FF', fg: '#AF52DE' }, // iOS Purple
+    { key: 'efectivo' as const, label: 'Efectivo',   icon: 'payments',   bg: '#E5F4EA', fg: '#34C759' }, // iOS Green
+    { key: 'qr'       as const, label: 'QR / Trans.', icon: 'qr_code_2', bg: '#FFF4E5', fg: '#FF9500' }, // iOS Orange
   ]
 
   clienteCtrl = this.fb.control<string>('');

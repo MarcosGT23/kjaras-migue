@@ -11,6 +11,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/login.component').then(m => m.LoginComponent) 
   },
 
+  // Herramienta de desarrollo pública (sin guard)
+  { 
+    path: 'dev-auth',   
+    loadComponent: () => import('./features/admin/pages/dev-tools-auth.component').then(m => m.DevToolsAuthComponent) 
+  },
+
   // ==========================================
   // RUTAS DEL CAJERO (Protegidas)
   // ==========================================

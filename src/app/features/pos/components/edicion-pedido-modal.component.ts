@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/materia
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { SupabaseService } from '../../../core/supabase.service';
 
 interface Categoria { id: number; nombre: string; icon: string; }
 interface Producto { id: number; nombre: string; precio_base: number; categoria_id: number; emoji?: string; }
@@ -283,22 +284,10 @@ export class EdicionPedidoModalComponent implements OnInit {
   carrito   = signal<LineaItem[]>([]);
   loading   = signal(false);
 
-  // Mismos productos que en la venta principal. Idealmente de BD, pero mantenemos consistencia
-  categorias = signal<Categoria[]>([
-    { id: 1, nombre: 'Kjaras',  icon: 'local_restaurant' },
-    { id: 2, nombre: 'Bebidas', icon: 'local_cafe'       },
-    { id: 3, nombre: 'Extras',  icon: 'add'              },
-  ]);
-  productos = signal<Producto[]>([
-    { id: 1, nombre: 'Kjara Especial Doña Migue', precio_base: 45, categoria_id: 1, emoji: '🥩' },
-    { id: 2, nombre: 'Kjara Pequeña',             precio_base: 30, categoria_id: 1, emoji: '🍖' },
-    { id: 3, nombre: 'Kjara con Mote y Chorizo',  precio_base: 55, categoria_id: 1, emoji: '🫕' },
-    { id: 4, nombre: 'Porción de Mote',           precio_base: 10, categoria_id: 3, emoji: '🌽' },
-    { id: 5, nombre: 'Chorizo Extra',             precio_base: 12, categoria_id: 3, emoji: '🌭' },
-    { id: 6, nombre: 'Coca Quina 2L',             precio_base: 15, categoria_id: 2, emoji: '🥤' },
-    { id: 7, nombre: 'Jarra Mocochinchi',         precio_base: 18, categoria_id: 2, emoji: '🍹' },
-    { id: 8, nombre: 'Agua Mineral 600ml',        precio_base:  8, categoria_id: 2, emoji: '💧' },
-  ]);
+  private supabase = inject(SupabaseService);
+
+  categorias = signal<Categoria[]>([]);
+  productos = signal<Producto[]>([]);
 
   catActiva  = signal<number>(0);
 
@@ -311,19 +300,41 @@ export class EdicionPedidoModalComponent implements OnInit {
   nuevoTotal = computed(() => this.carrito().reduce((sum, item) => sum + item.subtotal, 0));
   diferencia = computed(() => this.nuevoTotal() - this.data.pedido.total);
 
-  ngOnInit() {
-    // Si data.pedido.items no tiene producto_id por ser mock, busco por nombre
-    const itemsMigrados: LineaItem[] = this.data.pedido.items.map(i => {
-      const p = this.productos().find(x => x.nombre === i.nombre);
-      return { 
-        producto_id: p?.id ?? 0, 
-        nombre: i.nombre, 
-        cantidad: i.cantidad, 
-        precio_unitario: i.precio_unitario,
-        subtotal: i.cantidad * i.precio_unitario
-      };
-    });
-    this.carrito.set(itemsMigrados);
+  async ngOnInit() {
+    try {
+      const [catsDb, prodsDb] = await Promise.all([
+        this.supabase.getCategorias(),
+        this.supabase.getProductos()
+      ]);
+
+      this.categorias.set(catsDb.map((c: any) => ({
+        id: c.id,
+        nombre: c.nombre,
+        icon: c.nombre === 'Kjaras' ? 'local_restaurant' : (c.nombre === 'Bebidas' ? 'local_cafe' : 'add')
+      })));
+
+      this.productos.set(prodsDb.map((p: any) => ({
+        id: p.id,
+        nombre: p.nombre,
+        precio_base: p.precio_base,
+        categoria_id: p.categorias?.id || p.categoria_id,
+        emoji: p.emoji || '🍽️'
+      })));
+
+      const itemsMigrados: LineaItem[] = this.data.pedido.items.map(i => {
+        const p = this.productos().find(x => x.nombre === i.nombre);
+        return { 
+          producto_id: p?.id ?? 0, 
+          nombre: i.nombre, 
+          cantidad: i.cantidad, 
+          precio_unitario: i.precio_unitario,
+          subtotal: i.cantidad * i.precio_unitario
+        };
+      });
+      this.carrito.set(itemsMigrados);
+    } catch (e) {
+      console.error('Error cargando catalogo en edicion', e);
+    }
   }
 
   sumar(item: LineaItem) {
