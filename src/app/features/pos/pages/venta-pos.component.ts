@@ -88,14 +88,32 @@ interface Categoria { id: number; nombre: string; icon: string; }
         </div>
       </section>
 
+      <!-- FAB carrito para móvil/tablet -->
+      @if (totalItems() > 0 && !showCart()) {
+        <button class="cart-fab" (click)="showCart.set(true)" matTooltip="Ver orden">
+          <mat-icon class="!text-[24px]">shopping_bag</mat-icon>
+          <span class="cart-fab-badge">{{ totalItems() }}</span>
+        </button>
+      }
+
+      <!-- Backdrop para móvil/tablet -->
+      @if (showCart()) {
+        <div class="cart-backdrop" (click)="showCart.set(false)"></div>
+      }
+
       <!-- ════════ PANEL DE ORDEN (Derecha) ════════ -->
-      <aside class="order-sheet">
+      <aside class="order-sheet" [class.order-sheet--open]="showCart()">
         
         <!-- Sheet Header -->
         <div class="sheet-header">
-          <h2 class="sheet-title">Orden Actual</h2>
+          <div class="sheet-header-left">
+            <button class="sheet-back" (click)="showCart.set(false)" matTooltip="Volver al catálogo">
+              <mat-icon class="!text-[22px]">arrow_back</mat-icon>
+            </button>
+            <h2 class="sheet-title">Orden Actual</h2>
+          </div>
           @if (carrito().length > 0) {
-            <button class="clear-btn text-red-500" (click)="carrito.set([])" matTooltip="Vaciar toda la orden">
+            <button class="clear-btn text-red-500" (click)="carrito.set([]); showCart.set(false)" matTooltip="Vaciar toda la orden">
               Vaciar
             </button>
           }
@@ -186,7 +204,8 @@ interface Categoria { id: number; nombre: string; icon: string; }
     .pos-root { 
       display: flex; width: 100%; height: 100%; 
       background: transparent;
-      position: relative; /* Necesario para el overlay */
+      position: relative;
+      @media (max-width: 767px) { flex-direction: column; }
     }
 
     /* ════════ SUCCESS OVERLAY ════════ */
@@ -245,15 +264,18 @@ interface Categoria { id: number; nombre: string; icon: string; }
     .cat-header {
       flex-shrink: 0; padding: 24px 24px 16px;
       display: flex; flex-direction: column; gap: 16px;
-      /* Opcional: Glassmorphism en scroll, pero dejémoslo limpio por ahora */
+      @media (max-width: 767px) { padding: 16px 12px 12px; gap: 12px; }
     }
 
     .header-top {
       display: flex; align-items: center; justify-content: space-between;
+      gap: 12px;
+      @media (max-width: 767px) { flex-direction: column; align-items: stretch; }
     }
 
     .page-title {
       font-size: 1.8rem; font-weight: 700; color: #000000; margin: 0; letter-spacing: -0.02em;
+      @media (max-width: 767px) { font-size: 1.3rem; }
     }
 
     /* iOS Search Bar */
@@ -262,6 +284,7 @@ interface Categoria { id: number; nombre: string; icon: string; }
       width: 260px; height: 36px; padding: 0 10px;
       background: #E3E3E8; border-radius: 10px;
       transition: background 0.2s, box-shadow 0.2s;
+      @media (max-width: 767px) { width: 100%; }
     }
     .ios-search:focus-within { background: #FFFFFF; box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3); }
     .search-icon { color: #8E8E93; font-size: 18px !important; width: 18px !important; height: 18px !important; }
@@ -283,6 +306,7 @@ interface Categoria { id: number; nombre: string; icon: string; }
       background: #E5E5EA; color: #1C1C1E; font-size: 0.95rem; font-weight: 600;
       white-space: nowrap; flex-shrink: 0;
       transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      @media (max-width: 767px) { font-size: 0.8rem; padding: 6px 12px; }
     }
     .ios-pill:active { transform: scale(0.96); }
     .ios-pill--active {
@@ -295,6 +319,14 @@ interface Categoria { id: number; nombre: string; icon: string; }
       flex: 1; overflow-y: auto; padding: 8px 24px 24px;
       display: grid; gap: 16px; align-content: start;
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      @media (max-width: 1023px) and (min-width: 768px) {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 12px; padding: 8px 16px 16px;
+      }
+      @media (max-width: 767px) {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 10px; padding: 8px 12px 12px;
+      }
     }
 
     /* Apple Squircles Cards */
@@ -308,6 +340,10 @@ interface Categoria { id: number; nombre: string; icon: string; }
     }
     .apple-card:hover { transform: scale(1.02); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
     .apple-card:active { transform: scale(0.96); }
+    @media (max-width: 767px) {
+      .apple-card { border-radius: 14px; }
+      .apple-card:hover { transform: none; }
+    }
     
     .apple-card--in {
       border: 2px solid #007AFF; box-shadow: 0 4px 20px rgba(0, 122, 255, 0.15);
@@ -318,11 +354,11 @@ interface Categoria { id: number; nombre: string; icon: string; }
       display: flex; align-items: center; justify-content: center;
       position: relative;
     }
-    .card-emoji { font-size: 3.5rem; line-height: 1; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
+    .card-emoji { font-size: 3.5rem; line-height: 1; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); @media (max-width: 767px) { font-size: 2.5rem; } }
     
-    .card-details { padding: 12px 14px; text-align: center; }
-    .card-title { margin: 0 0 4px; font-size: 0.9rem; font-weight: 600; color: #1C1C1E; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .card-price { margin: 0; font-size: 0.95rem; font-weight: 700; color: #8E8E93; }
+    .card-details { padding: 12px 14px; text-align: center; @media (max-width: 767px) { padding: 8px 10px; } }
+    .card-title { margin: 0 0 4px; font-size: 0.9rem; font-weight: 600; color: #1C1C1E; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; @media (max-width: 767px) { font-size: 0.8rem; } }
+    .card-price { margin: 0; font-size: 0.95rem; font-weight: 700; color: #8E8E93; @media (max-width: 767px) { font-size: 0.85rem; } }
     
     .apple-card--in .card-price { color: #007AFF; }
 
@@ -345,32 +381,91 @@ interface Categoria { id: number; nombre: string; icon: string; }
       padding: 60px 20px; color: #8E8E93; text-align: center; font-size: 1.1rem;
     }
 
+    /* ════════ CART FAB (móvil/tablet) ════════ */
+    .cart-fab {
+      display: none;
+      @media (max-width: 1023px) {
+        display: flex; align-items: center; justify-content: center;
+        position: fixed; bottom: 24px; right: 24px; z-index: 100;
+        width: 60px; height: 60px; border-radius: 30px;
+        background: #007AFF; border: none; cursor: pointer;
+        box-shadow: 0 8px 24px rgba(0,122,255,0.4);
+        color: #FFFFFF; transition: transform 0.2s, box-shadow 0.2s;
+      }
+    }
+    .cart-fab:active { transform: scale(0.92); box-shadow: 0 4px 12px rgba(0,122,255,0.3); }
+    .cart-fab-badge {
+      position: absolute; top: -4px; right: -4px;
+      min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px;
+      background: #FF3B30; color: #FFFFFF;
+      font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 6px rgba(255,59,48,0.4);
+    }
+
+    /* ════════ BACKDROP (móvil/tablet) ════════ */
+    .cart-backdrop {
+      display: none;
+      @media (max-width: 1023px) {
+        display: block; position: fixed; inset: 0; z-index: 90;
+        background: rgba(0,0,0,0.35); backdrop-filter: blur(4px);
+        animation: ios-fade-in 0.2s ease;
+      }
+    }
+    @keyframes ios-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
     /* ════════ ORDER SHEET (Derecha) ════════ */
     .order-sheet {
       display: flex; flex-direction: column; flex-shrink: 0;
       background: #FFFFFF;
-      width: 380px;
-      box-shadow: -10px 0 30px rgba(0,0,0,0.03); /* Soft shadow separates from gray background */
+      width: clamp(300px, 30vw, 380px);
+      box-shadow: -10px 0 30px rgba(0,0,0,0.03);
       z-index: 10;
+      /* ── Floating overlay en móvil/tablet ── */
+      @media (max-width: 1023px) {
+        position: fixed; top: 0; right: 0; bottom: 0; z-index: 95;
+        width: min(420px, 85vw); height: 100vh;
+        box-shadow: -10px 0 40px rgba(0,0,0,0.12);
+        transform: translateX(100%);
+        transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+        border-radius: 20px 0 0 20px;
+      }
+    }
+    .order-sheet--open {
+      @media (max-width: 1023px) { transform: translateX(0); }
     }
 
     /* Sheet Header */
     .sheet-header {
       padding: 24px 24px 16px; flex-shrink: 0;
-      display: flex; align-items: baseline; justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between;
       border-bottom: 0.5px solid rgba(0,0,0,0.08);
+      @media (max-width: 1023px) { padding: 16px 20px 12px; }
+      @media (max-width: 767px) { padding: 12px 16px 10px; }
     }
-    .sheet-title { font-size: 1.5rem; font-weight: 800; color: #000000; margin: 0; letter-spacing: -0.02em; }
+    .sheet-header-left {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sheet-back {
+      display: none;
+      @media (max-width: 1023px) {
+        display: flex; align-items: center; justify-content: center;
+        width: 36px; height: 36px; border-radius: 10px;
+        background: #F2F2F7; border: none; cursor: pointer; color: #007AFF;
+        transition: background 0.15s; flex-shrink: 0;
+      }
+    }
+    .sheet-back:active { background: #E5E5EA; }
+    .sheet-title { font-size: 1.5rem; font-weight: 800; color: #000000; margin: 0; letter-spacing: -0.02em; @media (max-width: 767px) { font-size: 1.1rem; } }
     .clear-btn { background: transparent; border: none; font-size: 1rem; font-weight: 600; cursor: pointer; padding: 0; }
     .clear-btn:active { opacity: 0.5; }
 
     /* Items container */
-    .sheet-items { flex: 1; overflow-y: auto; padding: 0 24px; }
+    .sheet-items { flex: 1; overflow-y: auto; padding: 0 24px; @media (max-width: 767px) { padding: 0 16px; } }
     .sheet-items::-webkit-scrollbar { width: 4px; }
     .sheet-items::-webkit-scrollbar-thumb { background: #E5E5EA; border-radius: 4px; }
 
-    .empty-cart { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #8E8E93; text-align: center; }
-    .empty-cart-icon { width: 80px; height: 80px; border-radius: 40px; background: #F2F2F7; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; color: #C7C7CC; }
+    .empty-cart { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #8E8E93; text-align: center; padding: 20px 0; }
+    .empty-cart-icon { width: 80px; height: 80px; border-radius: 40px; background: #F2F2F7; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; color: #C7C7CC; @media (max-width: 767px) { width: 56px; height: 56px; } }
     .empty-cart-title { font-size: 1.2rem; font-weight: 700; color: #1C1C1E; margin: 0 0 4px; }
     .empty-cart-sub { font-size: 0.95rem; margin: 0; }
 
@@ -378,17 +473,18 @@ interface Categoria { id: number; nombre: string; icon: string; }
     .order-row {
       display: flex; align-items: center; justify-content: space-between;
       padding: 16px 0; border-bottom: 0.5px solid rgba(0,0,0,0.06);
+      @media (max-width: 767px) { padding: 10px 0; gap: 8px; }
     }
     .order-row:last-child { border-bottom: none; }
     
-    .row-icon { font-size: 1.8rem; background: #F2F2F7; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 12px;}
+    .row-icon { font-size: 1.8rem; background: #F2F2F7; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 12px; @media (max-width: 767px) { width: 36px; height: 36px; font-size: 1.3rem; margin-right: 8px; } }
     
     .row-info { flex: 1; min-width: 0; margin-right: 12px; }
     .row-name { margin: 0; font-size: 0.95rem; font-weight: 600; color: #1C1C1E; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;}
     .row-price { margin: 4px 0 0; font-size: 0.85rem; color: #8E8E93; font-weight: 500;}
 
     .row-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
-    .row-subtotal { font-weight: 700; color: #000000; font-size: 1rem; letter-spacing: -0.01em;}
+    .row-subtotal { font-weight: 700; color: #000000; font-size: 1rem; letter-spacing: -0.01em; @media (max-width: 767px) { font-size: 0.85rem; } }
 
     /* iOS Stepper (Pill with + and -) */
     .ios-stepper {
@@ -406,21 +502,22 @@ interface Categoria { id: number; nombre: string; icon: string; }
     /* Footer / Checkout Button */
     .sheet-footer {
       padding: 20px 24px 24px;
-      /* Soft shadow to pop above scroll */
       box-shadow: 0 -10px 20px rgba(0,0,0,0.02);
       background: rgba(255, 255, 255, 0.9);
       backdrop-filter: blur(10px);
+      @media (max-width: 767px) { padding: 12px 16px 16px; }
     }
-    .totals { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; }
+    .totals { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; @media (max-width: 767px) { margin-bottom: 12px; } }
     .totals-label { font-size: 1.1rem; font-weight: 600; color: #8E8E93; }
-    .totals-val { font-size: 2rem; font-weight: 800; color: #000000; letter-spacing: -0.03em; line-height: 1;}
+    .totals-val { font-size: 2rem; font-weight: 800; color: #000000; letter-spacing: -0.03em; line-height: 1; @media (max-width: 767px) { font-size: 1.5rem; }}
 
     /* Apple Pay style mega button */
     .apple-pay-btn {
       width: 100%; height: 56px; border-radius: 16px; border: none;
       font-size: 1.15rem; font-weight: 700; letter-spacing: 0.01em; cursor: pointer;
-      background: #E5E5EA; color: #8E8E93; /* Disabled state */
+      background: #E5E5EA; color: #8E8E93;
       transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+      @media (max-width: 767px) { height: 48px; font-size: 1rem; border-radius: 12px; }
     }
     .apple-pay-btn--active {
       background: #007AFF; color: #FFFFFF;
@@ -446,6 +543,7 @@ export class VentaPosComponent implements OnInit {
 
   ticketActual: any = null;
   showSuccess = signal(false);
+  showCart = signal(false);
 
   private contadorPedido = 1000;
 
@@ -499,6 +597,7 @@ export class VentaPosComponent implements OnInit {
       if (i !== -1) { const a = [...it]; a[i] = { ...a[i], cantidad: a[i].cantidad+1, subtotal: (a[i].cantidad+1)*p.precio_base }; return a; }
       return [...it, { producto: p, cantidad: 1, subtotal: p.precio_base }];
     });
+    if (window.innerWidth < 1024) this.showCart.set(true);
   }
   
   sub(p: Producto) {
@@ -557,8 +656,9 @@ export class VentaPosComponent implements OnInit {
 
           // Mostrar animación de éxito
           this.showSuccess.set(true);
+          this.showCart.set(false);
           setTimeout(() => {
-            this.cdr.detectChanges(); // Asegurar que Angular renderice el ticket antes de imprimir
+            this.cdr.detectChanges();
             this.ticketRef?.imprimir();
             this.carrito.set([]);
           }, 1800);

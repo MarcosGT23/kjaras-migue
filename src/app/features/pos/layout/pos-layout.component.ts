@@ -112,7 +112,7 @@ const NAV = [
         <header class="topbar">
           <div class="topbar-left">
             <button class="toggle-btn" (click)="sm.set(!sm())">
-              <mat-icon class="!text-[24px]" style="color: #8E8E93">{{ sm() ? 'menu' : 'menu_open' }}</mat-icon>
+              <mat-icon class="!text-[24px]" style="color: #8E8E93">{{ sm() ? 'menu_open' : 'menu' }}</mat-icon>
             </button>
             <span class="topbar-title">Módulo de Caja</span>
           </div>
@@ -340,6 +340,7 @@ const NAV = [
     .ios-btn-cancel:disabled, .ios-btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* Media queries */
+    @media (max-width: 1023px) { .rail { width: 72px; } }
     @media (max-width: 640px) { 
       .topbar-title { display: none; } 
       .user-info { display: none; }
@@ -351,7 +352,7 @@ export class PosLayoutComponent implements OnInit {
   private router      = inject(Router);
   cajaService         = inject(CajaService);
 
-  sm  = signal(false);
+  sm  = signal(true);
   nav = NAV;
   showLogoutModal = signal(false);
   isLoggingOut    = signal(false);

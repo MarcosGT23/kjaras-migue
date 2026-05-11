@@ -59,7 +59,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
               @for (m of metodos; track m.key) {
                 <button class="method-card" 
                         [class.method-card--active]="metodo() === m.key"
-                        (click)="metodo.set(m.key)">
+                        (click)="metodo.set(m.key); monto.reset()">
                   <div class="method-icon" [style.background]="m.bg" [style.color]="m.fg">
                     <mat-icon class="!text-[22px]">{{ m.icon }}</mat-icon>
                   </div>
@@ -132,22 +132,24 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
     }
 
     .ios-modal {
-      display: flex; flex-direction: column; width: 100%; min-width: 420px; max-width: 500px;
+      display: flex; flex-direction: column; width: 100%; min-width: 320px; max-width: 500px;
       background: #FFFFFF; max-height: 90vh;
+      @media (max-width: 420px) { min-width: unset; }
     }
 
     .modal-header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 24px 24px 16px; border-bottom: 0.5px solid rgba(0,0,0,0.08);
       flex-shrink: 0;
+      @media (max-width: 420px) { padding: 16px 16px 12px; }
     }
-    .modal-title { margin: 0; font-size: 1.25rem; font-weight: 700; color: #000000; letter-spacing: -0.01em; }
+    .modal-title { margin: 0; font-size: 1.25rem; font-weight: 700; color: #000000; letter-spacing: -0.01em; @media (max-width: 420px) { font-size: 1.1rem; } }
     .close-btn {
       width: 32px; height: 32px; border-radius: 16px; background: #F2F2F7; color: #8E8E93;
       display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;
     }
 
-    .modal-body { padding: 20px 24px; flex: 1; overflow-y: auto; }
+    .modal-body { padding: 20px 24px; flex: 1; overflow-y: auto; @media (max-width: 420px) { padding: 16px; } }
     .modal-body::-webkit-scrollbar { width: 4px; }
     .modal-body::-webkit-scrollbar-thumb { background: #E5E5EA; border-radius: 4px; }
 
@@ -157,7 +159,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
       padding: 0 0 24px;
     }
     .total-label { font-size: 0.75rem; font-weight: 700; color: #8E8E93; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
-    .total-value { font-size: 3rem; font-weight: 800; color: #000000; letter-spacing: -0.04em; line-height: 1; }
+    .total-value { font-size: 3rem; font-weight: 800; color: #000000; letter-spacing: -0.04em; line-height: 1; @media (max-width: 420px) { font-size: 2.2rem; } }
 
     /* Forms */
     .ios-form { display: flex; flex-direction: column; gap: 20px; }
@@ -184,16 +186,17 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
     .seg-btn--active { background: #FFFFFF; color: #000000; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 
     /* Methods */
-    .methods-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .methods-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; @media (max-width: 420px) { gap: 8px; } }
     .method-card {
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
       padding: 16px 8px; background: #FFFFFF; border: 1.5px solid #E5E5EA; border-radius: 14px;
       cursor: pointer; transition: all 0.15s;
+      @media (max-width: 420px) { padding: 12px 6px; gap: 6px; border-radius: 12px; }
     }
     .method-card:hover { border-color: #C7C7CC; }
     .method-card--active { border-color: #007AFF; background: #F0F8FF; box-shadow: 0 4px 12px rgba(0,122,255,0.1); }
     
-    .method-icon { width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; }
+    .method-icon { width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; @media (max-width: 420px) { width: 36px; height: 36px; } }
     .method-name { font-size: 0.85rem; font-weight: 600; color: #1C1C1E; }
 
     /* Cash specific */
@@ -229,11 +232,13 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
     .modal-footer {
       display: flex; gap: 12px; padding: 16px 24px 24px;
       border-top: 0.5px solid rgba(0,0,0,0.08); flex-shrink: 0;
+      @media (max-width: 420px) { padding: 12px 16px 16px; gap: 8px; }
     }
     .sys-btn {
       flex: 1; height: 50px; border-radius: 14px; border: none; cursor: pointer;
       display: flex; align-items: center; justify-content: center; gap: 8px;
       font-size: 1.05rem; font-weight: 600; letter-spacing: 0.01em; transition: all 0.2s;
+      @media (max-width: 420px) { height: 44px; font-size: 0.9rem; }
     }
     .sys-btn:active { transform: scale(0.97); opacity: 0.9; }
 
@@ -253,21 +258,30 @@ export class CobroModalComponent {
   errMsg  = signal('');
 
   metodos = [
-    { key: 'efectivo' as const, label: 'Efectivo',   icon: 'payments',   bg: '#E5F4EA', fg: '#34C759' }, // iOS Green
-    { key: 'qr'       as const, label: 'QR / Trans.', icon: 'qr_code_2', bg: '#FFF4E5', fg: '#FF9500' }, // iOS Orange
+    { key: 'efectivo' as const, label: 'Efectivo',   icon: 'payments',   bg: '#E5F4EA', fg: '#34C759' },
+    { key: 'qr'       as const, label: 'QR / Trans.', icon: 'qr_code_2', bg: '#FFF4E5', fg: '#FF9500' },
   ]
 
   clienteCtrl = this.fb.control<string>('');
   monto   = this.fb.control<number|null>(null, [Validators.required, Validators.min(this.data.total)]);
-  cambio  = computed(() => Math.round(((this.monto.value??0) - this.data.total)*100)/100);
+
+  /** Signal sincronizada con el form control para que los computed se actualicen reactivamente */
+  private montoSignal = signal<number | null>(null);
+
+  cambio  = computed(() => Math.round(((this.montoSignal()??0) - this.data.total)*100)/100);
   valido  = computed(() => {
-    if (this.metodo()==='efectivo') return (this.monto.valid && this.cambio()>=0 && this.monto.value !== null);
+    if (this.metodo()==='efectivo') { const v = this.montoSignal(); return v !== null && v >= this.data.total; }
     return true;
   });
   quicks  = computed(() => {
     const t = this.data.total as number;
-    return [...new Set([Math.ceil(t/10)*10, Math.ceil(t/50)*50, Math.ceil(t/100)*100])].filter(c=>c>=t).slice(0,3);
+    const amounts = [Math.ceil(t/5)*5, Math.ceil(t/10)*10, Math.ceil(t/20)*20, Math.ceil(t/50)*50, Math.ceil(t/100)*100];
+    return [...new Set(amounts)].filter(c=>c>=t).slice(0,3);
   });
+
+  constructor() {
+    this.monto.valueChanges.subscribe(v => this.montoSignal.set(v));
+  }
 
   async confirm() {
     if (!this.valido()) return;

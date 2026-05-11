@@ -145,21 +145,24 @@ interface Pedido    { id: number; created_at: string; total: number; metodo_pago
     .his-header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 32px 32px 16px; flex-shrink: 0;
+      @media (max-width: 1023px) and (min-width: 768px) { padding: 24px 24px 12px; }
+      @media (max-width: 767px) { flex-direction: column; align-items: flex-start; gap: 12px; padding: 16px 16px 12px; }
     }
-    .page-title { margin: 0; font-size: 2rem; font-weight: 700; color: #000000; letter-spacing: -0.03em; line-height: 1.1; }
-    .page-subtitle { margin: 4px 0 0; font-size: 0.95rem; color: #8E8E93; font-weight: 500;}
+    .page-title { margin: 0; font-size: 2rem; font-weight: 700; color: #000000; letter-spacing: -0.03em; line-height: 1.1; @media (max-width: 767px) { font-size: 1.4rem; } }
+    .page-subtitle { margin: 4px 0 0; font-size: 0.95rem; color: #8E8E93; font-weight: 500; @media (max-width: 767px) { font-size: 0.8rem; } }
 
     .total-summary {
       display: flex; flex-direction: column; align-items: flex-end;
+      @media (max-width: 767px) { flex-direction: row; align-items: center; gap: 8px; width: 100%; justify-content: space-between; }
     }
-    .ts-label { font-size: 0.75rem; font-weight: 700; color: #8E8E93; text-transform: uppercase; letter-spacing: 0.05em; }
-    .ts-val   { font-size: 1.5rem; font-weight: 800; color: #007AFF; letter-spacing: -0.02em; margin-top: 2px;}
+    .ts-label { font-size: 0.75rem; font-weight: 700; color: #8E8E93; text-transform: uppercase; letter-spacing: 0.05em; @media (max-width: 767px) { font-size: 0.65rem; } }
+    .ts-val   { font-size: 1.5rem; font-weight: 800; color: #007AFF; letter-spacing: -0.02em; margin-top: 2px; @media (max-width: 767px) { font-size: 1.1rem; margin-top: 0; } }
 
     /* List Area */
-    .his-list { flex: 1; overflow-y: auto; padding: 16px 32px 40px; }
+    .his-list { flex: 1; overflow-y: auto; padding: 16px 32px 40px; @media (max-width: 1023px) and (min-width: 768px) { padding: 12px 24px 32px; } @media (max-width: 767px) { padding: 8px 16px 24px; } }
     .loader { display: flex; justify-content: center; padding: 40px; }
 
-    .card-list { display: flex; flex-direction: column; gap: 16px; }
+    .card-list { display: flex; flex-direction: column; gap: 16px; @media (max-width: 767px) { gap: 10px; } }
 
     /* Apple Cards */
     .apple-card {
@@ -167,67 +170,77 @@ interface Pedido    { id: number; created_at: string; total: number; metodo_pago
       box-shadow: 0 4px 20px rgba(0,0,0,0.04);
       display: flex; flex-direction: column; overflow: hidden;
       transition: opacity 0.2s;
+      @media (max-width: 767px) { border-radius: 14px; }
     }
     .apple-card--anulado { opacity: 0.6; }
 
     .card-row {
       display: flex; align-items: center; padding: 16px 20px;
       cursor: pointer; transition: background 0.15s;
+      @media (max-width: 767px) { padding: 12px 14px; }
     }
     .card-row:active { background: #F2F2F7; }
 
     .status-icon {
-      width: 44px; height: 44px; border-radius: 50%; /* Circle */
+      width: 44px; height: 44px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       margin-right: 16px; flex-shrink: 0;
+      @media (max-width: 767px) { width: 36px; height: 36px; margin-right: 10px; }
     }
 
     .order-info { flex: 1; min-width: 0; }
-    .info-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 2px;}
-    .order-id { font-size: 1.05rem; font-weight: 700; color: #000000; letter-spacing: -0.01em;}
+    .info-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 2px; }
+    .order-id { font-size: 1.05rem; font-weight: 700; color: #000000; letter-spacing: -0.01em; @media (max-width: 767px) { font-size: 0.9rem; } }
     
     .ios-badge {
-      padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; 
+      padding: 3px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 600;
       letter-spacing: 0.02em; border: 0.5px solid rgba(0,0,0,0.05);
+      display: inline-flex; align-items: center; gap: 2px;
+      @media (max-width: 767px) { font-size: 0.6rem; padding: 2px 6px; }
     }
     .badge-gray { background: #F2F2F7; color: #8E8E93; }
 
-    .order-time { margin: 0; font-size: 0.85rem; color: #8E8E93; font-weight: 500;}
-    .client-name { color: #1C1C1E; }
+    .order-time { margin: 0; font-size: 0.85rem; color: #8E8E93; font-weight: 500; @media (max-width: 767px) { font-size: 0.72rem; } }
+    .client-name { color: #1C1C1E; font-weight: 600; }
 
-    .order-right { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
-    .order-total { font-size: 1.15rem; font-weight: 700; color: #000000; letter-spacing: -0.02em;}
-    .chevron { display: flex; align-items: center; justify-content: center; width: 24px; }
+    .order-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; @media (max-width: 767px) { gap: 6px; flex-direction: column-reverse; align-items: flex-end; } }
+    .order-total { font-size: 1.15rem; font-weight: 700; color: #000000; letter-spacing: -0.02em; @media (max-width: 767px) { font-size: 0.9rem; } }
+    .chevron { display: flex; align-items: center; justify-content: center; width: 20px; @media (max-width: 767px) { width: 16px; } }
     
     .rotate-180 { transform: rotate(90deg) !important; color: #000000 !important; }
 
     /* Expanded Detail */
     .card-detail {
-      padding: 0 20px 20px 76px; /* Offset to align with text */
+      padding: 0 20px 20px 76px;
       background: #FFFFFF;
+      @media (max-width: 767px) { padding: 0 14px 14px 60px; }
     }
 
     .detail-inset {
       background: #F8F9FA; border-radius: 12px; padding: 12px 16px;
-      margin-bottom: 16px; border: 0.5px solid rgba(0,0,0,0.04);
+      margin-bottom: 14px; border: 0.5px solid rgba(0,0,0,0.04);
+      @media (max-width: 767px) { padding: 10px 12px; border-radius: 10px; margin-bottom: 10px; }
     }
     .items-head {
-      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 8px;
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 4px;
       font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: #8E8E93;
       padding-bottom: 8px; border-bottom: 0.5px solid #E5E5EA; margin-bottom: 8px;
+      @media (max-width: 767px) { font-size: 0.6rem; gap: 2px; grid-template-columns: 1.5fr 0.7fr 0.8fr 0.8fr; }
     }
     .item-row {
-      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 8px;
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 4px;
       font-size: 0.85rem; color: #1C1C1E; padding: 4px 0;
+      @media (max-width: 767px) { font-size: 0.75rem; gap: 2px; grid-template-columns: 1.5fr 0.7fr 0.8fr 0.8fr; }
     }
-    .item-name { font-weight: 500; }
+    .item-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* Action Buttons */
-    .action-buttons { display: flex; gap: 10px; justify-content: flex-end; }
+    .action-buttons { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; @media (max-width: 767px) { gap: 6px; } }
     .sys-btn {
-      display: flex; align-items: center; gap: 6px; padding: 8px 16px;
-      border-radius: 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; gap: 4px; padding: 8px 14px;
+      border-radius: 12px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
       border: none; transition: transform 0.1s, opacity 0.2s;
+      @media (max-width: 767px) { font-size: 0.72rem; padding: 6px 10px; border-radius: 10px; }
     }
     .sys-btn:active { transform: scale(0.96); }
     .sys-btn--gray { background: #F2F2F7; color: #000000; }
@@ -235,10 +248,10 @@ interface Pedido    { id: number; created_at: string; total: number; metodo_pago
     .sys-btn--red { background: #FFD4D4; color: #C90000; }
 
     /* Empty state */
-    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; text-align: center; }
-    .empty-icon { width: 80px; height: 80px; border-radius: 40px; background: #E5E5EA; display: flex; align-items: center; justify-content: center; color: #8E8E93; margin-bottom: 16px; }
-    .empty-title { margin: 0; font-size: 1.25rem; font-weight: 700; color: #000000; }
-    .empty-sub   { margin: 4px 0 0; font-size: 0.95rem; color: #8E8E93; }
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; text-align: center; @media (max-width: 767px) { padding: 40px 16px; } }
+    .empty-icon { width: 80px; height: 80px; border-radius: 40px; background: #E5E5EA; display: flex; align-items: center; justify-content: center; color: #8E8E93; margin-bottom: 16px; @media (max-width: 767px) { width: 56px; height: 56px; } }
+    .empty-title { margin: 0; font-size: 1.25rem; font-weight: 700; color: #000000; @media (max-width: 767px) { font-size: 1rem; } }
+    .empty-sub   { margin: 4px 0 0; font-size: 0.95rem; color: #8E8E93; @media (max-width: 767px) { font-size: 0.82rem; } }
   `]
 })
 export class HistorialComponent implements OnInit, OnDestroy {
