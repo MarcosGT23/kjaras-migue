@@ -322,15 +322,18 @@ export class HistorialComponent implements OnInit, OnDestroy {
   private async loadPedidos() {
     this.loading.set(true);
     try {
-      const dbPedidos = await this.supabase.getPedidos();
-      // Filtrar por la sucursal activa del usuario
+      // Filtrar por la sucursal activa del usuario y por el usuario actual (empleado)
       const sucursalId = this.auth.userSucursal() || 1;
-      
+      const session = await this.supabase.client.auth.getSession();
+      const usuarioId = session.data.session?.user?.id;
+
+      const dbPedidos = await this.supabase.getPedidos(sucursalId, usuarioId);
 
       const filtered = dbPedidos.filter((p: any) => {
         // apertura_cajas puede ser un objeto o array según la FK de Supabase
         const apertura = Array.isArray(p.apertura_cajas) ? p.apertura_cajas[0] : p.apertura_cajas;
-        return apertura?.sucursal_id === sucursalId;
+        // Filtrar por sucursal Y por usuario (cajero)
+        return apertura?.sucursal_id === sucursalId && apertura?.usuario_id === usuarioId;
       });
       
       const mapeados = filtered.map((p: any) => {

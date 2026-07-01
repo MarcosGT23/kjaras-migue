@@ -89,6 +89,20 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
           </div>
 
+          <!-- Sucursal -->
+          <div class="field-group">
+            <label class="field-label">Sucursal de Inventario</label>
+            <div class="field-select-wrap">
+              <mat-icon class="field-prefix-icon">store</mat-icon>
+              <select class="field-select" formControlName="sucursal_id">
+                <option [ngValue]="null" disabled>Seleccionar...</option>
+                @for (suc of sucursales(); track suc.id) {
+                  <option [ngValue]="suc.id">{{ suc.nombre }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
           <!-- Stock + Toggle -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center dark-section">
 
@@ -256,27 +270,38 @@ export class ProductoModalComponent implements OnInit {
   isLoading  = signal(false);
   isEditMode = signal(false);
   categorias = signal<any[]>([]);
+  sucursales = signal<any[]>([]);
 
   productoForm = this.fb.group({
     id:              [null],
     nombre:          ['', Validators.required],
     categoria_id:    [null as number | null, Validators.required],
     precio_base:     [null, [Validators.required, Validators.min(0)]],
+    sucursal_id:     [null as number | null, Validators.required],
     stock_sucursal:  [0, [Validators.required, Validators.min(0)]],
     activo:          [true]
   });
 
   async ngOnInit() {
     try {
-      const cats = await this.supabase.getCategorias();
+      const [cats, sucs] = await Promise.all([
+        this.supabase.getCategorias(),
+        this.supabase.getSucursales()
+      ]);
       this.categorias.set(cats || []);
+      this.sucursales.set(sucs || []);
     } catch (error) {
-      console.error('Error cargando categorías:', error);
+      console.error('Error cargando datos:', error);
     }
 
     if (this.data?.producto) {
       this.isEditMode.set(true);
       this.productoForm.patchValue(this.data.producto);
+    } else {
+      // Para nuevos productos, seleccionar la primera sucursal por defecto
+      if (this.sucursales().length > 0) {
+        this.productoForm.patchValue({ sucursal_id: this.sucursales()[0].id });
+      }
     }
   }
 
@@ -293,7 +318,7 @@ export class ProductoModalComponent implements OnInit {
           activo: datos.activo
         });
       } else {
-        await this.supabase.crearProducto(datos, datos.stock_sucursal!);
+        await this.supabase.crearProducto(datos, datos.stock_sucursal!, datos.sucursal_id!);
       }
       this.dialogRef.close({ exito: true });
     } catch (error) {

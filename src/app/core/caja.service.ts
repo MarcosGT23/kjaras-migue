@@ -30,18 +30,24 @@ export class CajaService {
   // Inicialización: verifica si hay caja abierta
   // Llamar desde el App root o desde ngOnInit del layout
   // ─────────────────────────────────────────
-  async init(sucursalId: number) {
+  async init(sucursalId: number, usuarioId?: string) {
     // 1. Leer estado guardado localmente
     const cached = this.leerCache();
 
     // 2. Verificar contra Supabase que la caja sigue abierta
     try {
-      const { data, error } = await this.supabase.client
+      let query = this.supabase.client
         .from('apertura_cajas')
         .select('id, monto_inicial, fecha_inicio')
         .eq('sucursal_id', sucursalId)
-        .eq('estado', 'abierta')
-        .maybeSingle();
+        .eq('estado', 'abierta');
+
+      // Si se proporciona usuarioId, filtrar también por usuario
+      if (usuarioId) {
+        query = query.eq('usuario_id', usuarioId);
+      }
+
+      const { data, error } = await query.maybeSingle();
 
       if (error) throw error;
 

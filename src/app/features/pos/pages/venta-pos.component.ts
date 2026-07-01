@@ -13,7 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-interface Producto { id: number; nombre: string; precio_base: number; categoria_id: number; emoji?: string; }
+interface Producto { id: number; nombre: string; precio_base: number; categoria_id: number; emoji?: string; stock_actual?: number; }
 interface ItemCarrito { producto: Producto; cantidad: number; subtotal: number; }
 interface Categoria { id: number; nombre: string; icon: string; }
 
@@ -560,10 +560,13 @@ export class VentaPosComponent implements OnInit {
 
   async ngOnInit() {
     try {
-      // Cargar categorías y productos desde Supabase
+      // Obtener la sucursal del usuario autenticado
+      const sucursalId = this.auth.userSucursal() || undefined;
+
+      // Cargar categorías y productos desde Supabase (filtrados por sucursal)
       const [catsDb, prodsDb] = await Promise.all([
         this.supabase.getCategorias(),
-        this.supabase.getProductos()
+        this.supabase.getProductos(sucursalId)
       ]);
 
       // Mapear categorías (asumiendo que en DB no hay icono, asignamos uno genérico por ahora)
@@ -579,7 +582,10 @@ export class VentaPosComponent implements OnInit {
         nombre: p.nombre,
         precio_base: p.precio_base,
         categoria_id: p.categoria_id,  // Campo directo desde la DB
-        emoji: p.emoji || '🍽️'
+        emoji: p.emoji || '🍽️',
+        stock_actual: p.inventario && p.inventario.length > 0
+          ? p.inventario.find((inv: any) => inv.sucursal_id === sucursalId)?.stock_actual || 0
+          : 0
       })));
     } catch (error) {
       console.error('Error al cargar catálogo POS:', error);
@@ -592,6 +598,15 @@ export class VentaPosComponent implements OnInit {
       this.dialog.open(CajaCerradaModalComponent, { width: '400px', maxWidth: '95vw', panelClass: 'apple-modal' });
       return;
     }
+
+    const stockDisponible = p.stock_actual || 0;
+    const cantidadEnCarrito = this.cantCart(p.id);
+
+    if (cantidadEnCarrito >= stockDisponible) {
+      alert(`No hay suficiente stock de "${p.nombre}". Stock disponible: ${stockDisponible}`);
+      return;
+    }
+
     this.carrito.update(it => {
       const i = it.findIndex(x => x.producto.id === p.id);
       if (i !== -1) { const a = [...it]; a[i] = { ...a[i], cantidad: a[i].cantidad+1, subtotal: (a[i].cantidad+1)*p.precio_base }; return a; }
@@ -614,11 +629,21 @@ export class VentaPosComponent implements OnInit {
       width: '480px', maxWidth: '95vw', disableClose: true, panelClass: 'apple-modal',
       data: { total: this.totalAPagar(), carrito: this.carrito() }
     });
-    ref.afterClosed().subscribe(async r => { 
+    ref.afterClosed().subscribe(async r => {
       if (r?.exito) {
-        
+
         try {
           const sucursal_id = this.auth.userSucursal() || 1; // Fallback to 1
+
+          // Validar stock antes de registrar el pedido
+          for (const item of this.carrito()) {
+            const stockDisponible = item.producto.stock_actual || 0;
+            if (item.cantidad > stockDisponible) {
+              alert(`Stock insuficiente para "${item.producto.nombre}". Stock disponible: ${stockDisponible}, solicitado: ${item.cantidad}`);
+              return;
+            }
+          }
+
           const detalles = this.carrito().map(item => ({
             producto_id: item.producto.id,
             cantidad: item.cantidad,

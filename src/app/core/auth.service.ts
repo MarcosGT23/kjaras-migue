@@ -36,7 +36,7 @@ export class AuthService {
 
     const { data: userData, error: userError } = await this.supabase.client
       .from('usuarios')
-      .select('rol, sucursal_id')
+      .select('rol, sucursal_id, activo')
       .eq('id', authData.user.id)
       .maybeSingle();
 
@@ -45,6 +45,11 @@ export class AuthService {
     if (!userData) {
       await this.supabase.client.auth.signOut();
       throw new Error('USER_NOT_IN_TABLE');
+    }
+
+    if (!userData.activo) {
+      await this.supabase.client.auth.signOut();
+      throw new Error('USER_BLOCKED');
     }
 
     const rol = userData.rol as UserRole;
@@ -73,13 +78,17 @@ export class AuthService {
 
     const { data: userData } = await this.supabase.client
       .from('usuarios')
-      .select('rol, sucursal_id')
+      .select('rol, sucursal_id, activo')
       .eq('id', data.session.user.id)
       .maybeSingle();
 
-    if (userData) {
+    if (userData && userData.activo) {
       this.userRole.set(userData.rol as UserRole);
       this.userSucursal.set(userData.sucursal_id);
+    } else {
+      await this.supabase.client.auth.signOut();
+      this.userRole.set(null);
+      this.userSucursal.set(null);
     }
   }
 }

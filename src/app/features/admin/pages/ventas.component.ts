@@ -58,16 +58,37 @@ interface ResumenSucursal {
       </div>
     </div>
 
-    <!-- Filtro de fecha (Historial) -->
-    @if (tabActivo() === 'historial') {
-      <div class="dark-tabs">
-        @for (f of filtros; track f.valor) {
-          <button class="tab-btn" [class.tab-btn--on]="filtroActivo() === f.valor" (click)="filtroActivo.set(f.valor)">
-            {{ f.label }}
-          </button>
+    <!-- Filtros -->
+    <div class="flex flex-wrap items-center gap-3">
+      <!-- Filtro de sucursal -->
+      <select class="bg-[#1A1A24] border border-[#2D2D3D] text-slate-300 text-xs rounded-lg px-3 py-1.5 outline-none focus:border-indigo-500"
+              (change)="aplicarFiltroSucursal($event)">
+        <option value="all">Todas las sucursales</option>
+        @for (suc of sucursales(); track suc.id) {
+          <option [value]="suc.id">{{ suc.nombre }}</option>
         }
-      </div>
-    }
+      </select>
+
+      <!-- Filtro de empleado -->
+      <select class="bg-[#1A1A24] border border-[#2D2D3D] text-slate-300 text-xs rounded-lg px-3 py-1.5 outline-none focus:border-indigo-500"
+              (change)="aplicarFiltroUsuario($event)">
+        <option value="all">Todos los empleados</option>
+        @for (usr of usuarios(); track usr.id) {
+          <option [value]="usr.id">{{ usr.nombre_completo }}</option>
+        }
+      </select>
+
+      <!-- Filtro de fecha (Historial) -->
+      @if (tabActivo() === 'historial') {
+        <div class="dark-tabs">
+          @for (f of filtros; track f.valor) {
+            <button class="tab-btn" [class.tab-btn--on]="filtroActivo() === f.valor" (click)="filtroActivo.set(f.valor)">
+              {{ f.label }}
+            </button>
+          }
+        </div>
+      }
+    </div>
   </div>
 
   <!-- ── TABS ── -->
@@ -800,6 +821,12 @@ export class VentasComponent implements OnInit, OnDestroy {
   pedidosDrawer   = signal<Pedido[]>([]);
   pedidoDetalle   = signal<Pedido | null>(null);
 
+  // Filtros adicionales
+  filtroSucursalId = signal<number | undefined>(undefined);
+  filtroUsuarioId  = signal<string | undefined>(undefined);
+  sucursales       = signal<any[]>([]);
+  usuarios         = signal<any[]>([]);
+
   private canal: any;
 
   filtros = [
@@ -859,13 +886,16 @@ export class VentasComponent implements OnInit, OnDestroy {
   private async cargarDatos() {
     this.cargando.set(true);
     try {
-      const [rawPedidos, rawSucursales] = await Promise.all([
-        this.supabase.getPedidos(undefined, 200),
-        this.supabase.getSucursales()
+      const [rawPedidos, rawSucursales, rawUsuarios] = await Promise.all([
+        this.supabase.getPedidos(undefined, undefined, 200),
+        this.supabase.getSucursales(),
+        this.supabase.getUsuariosAdmin()
       ]);
       const pedidos = rawPedidos.map((p: any) => this.mapearPedido(p));
       this.pedidosTodos.set(pedidos);
       this.pedidosLive.set([...pedidos]);
+      this.sucursales.set(rawSucursales || []);
+      this.usuarios.set(rawUsuarios || []);
       this.calcularResumenSucursales(pedidos, rawSucursales);
     } catch (err) {
       console.warn('Error cargando ventas:', err);
@@ -953,15 +983,44 @@ export class VentasComponent implements OnInit, OnDestroy {
     this.pedidosDrawer.set([]);
     this.cargandoDrawer.set(true);
     try {
-      const raw = await this.supabase.getPedidos(s.id, 50);
-      this.pedidosDrawer.set(raw.length > 0
-        ? raw.map((p: any) => this.mapearPedido(p))
-        : this.pedidosTodos().filter(p => p.sucursal_id === s.id)
-      );
+      // Cargar pedidos específicos de esta sucursal (sin filtros globales)
+      const raw = await this.supabase.getPedidos(s.id, undefined, 200);
+      this.pedidosDrawer.set(raw.map((p: any) => this.mapearPedido(p)));
     } catch {
-      this.pedidosDrawer.set(this.pedidosTodos().filter(p => p.sucursal_id === s.id));
+      this.pedidosDrawer.set([]);
     } finally {
       this.cargandoDrawer.set(false);
+    }
+  }
+
+  // ── Filtros ─────────────────────────────────────────────────────
+  aplicarFiltroSucursal(event: Event) {
+    const value = (event.target as HTMLSelectElement).value;
+    this.filtroSucursalId.set(value === 'all' ? undefined : parseInt(value));
+    this.recargarPedidos();
+  }
+
+  aplicarFiltroUsuario(event: Event) {
+    const value = (event.target as HTMLSelectElement).value;
+    this.filtroUsuarioId.set(value === 'all' ? undefined : value);
+    this.recargarPedidos();
+  }
+
+  private async recargarPedidos() {
+    this.cargando.set(true);
+    try {
+      const rawPedidos = await this.supabase.getPedidos(
+        this.filtroSucursalId(),
+        this.filtroUsuarioId(),
+        200
+      );
+      const pedidos = rawPedidos.map((p: any) => this.mapearPedido(p));
+      this.pedidosTodos.set(pedidos);
+      this.pedidosLive.set([...pedidos]);
+    } catch (err) {
+      console.warn('Error recargando pedidos:', err);
+    } finally {
+      this.cargando.set(false);
     }
   }
 

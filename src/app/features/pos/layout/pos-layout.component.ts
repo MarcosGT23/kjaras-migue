@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/auth.service';
 import { CajaService } from '../../../core/caja.service';
+import { SupabaseService } from '../../../core/supabase.service';
 import { Router } from '@angular/router';
 
 import { MatIconModule } from '@angular/material/icon';
@@ -350,6 +351,7 @@ const NAV = [
 export class PosLayoutComponent implements OnInit {
   private authService = inject(AuthService);
   private router      = inject(Router);
+  private supabase    = inject(SupabaseService);
   cajaService         = inject(CajaService);
 
   sm  = signal(true);
@@ -360,7 +362,9 @@ export class PosLayoutComponent implements OnInit {
   async ngOnInit() {
     // Al cargar el layout, sincronizar estado de caja con la DB
     const sucursalId = this.authService.userSucursal() || 1;
-    await this.cajaService.init(sucursalId);
+    const session = await this.supabase.client.auth.getSession();
+    const usuarioId = session.data.session?.user?.id;
+    await this.cajaService.init(sucursalId, usuarioId);
   }
 
   horaCaja() {

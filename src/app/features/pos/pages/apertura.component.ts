@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CajaService } from '../../../core/caja.service';
 import { AuthService } from '../../../core/auth.service';
+import { SupabaseService } from '../../../core/supabase.service';
 
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -179,10 +180,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
   `]
 })
 export class AperturaComponent implements OnInit {
-  private router = inject(Router);
-  private fb     = inject(FormBuilder);
-  private auth   = inject(AuthService);
-  cajaService    = inject(CajaService);
+  private router     = inject(Router);
+  private fb        = inject(FormBuilder);
+  private auth      = inject(AuthService);
+  private supabase  = inject(SupabaseService);
+  cajaService       = inject(CajaService);
 
   loading = signal(false);
   err     = signal('');
@@ -196,9 +198,11 @@ export class AperturaComponent implements OnInit {
   }
 
   async ngOnInit() {
-    // Verificar contra la DB si hay caja abierta para esta sucursal
+    // Verificar contra la DB si hay caja abierta para esta sucursal y usuario
     const sucursalId = this.auth.userSucursal() || 1;
-    await this.cajaService.init(sucursalId);
+    const session = await this.supabase.client.auth.getSession();
+    const usuarioId = session.data.session?.user?.id;
+    await this.cajaService.init(sucursalId, usuarioId);
   }
 
   irAVenta() { this.router.navigate(['/caja/venta']); }

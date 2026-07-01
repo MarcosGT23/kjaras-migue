@@ -53,27 +53,43 @@ export class SupabaseService {
     return data;
   }
 
-  async getProductos() {
-    const { data, error } = await this.client
+  async getProductos(sucursalId?: number) {
+    let query = this.client
       .from('productos')
       .select(`
-        id, 
-        nombre, 
-        precio_base, 
+        id,
+        nombre,
+        precio_base,
         categoria_id,
-        activo, 
+        activo,
         categorias (id, nombre),
-        inventario (stock_actual)
+        inventario (stock_actual, sucursal_id)
       `)
       .eq('activo', true)
       .order('id', { ascending: false });
 
+    // Si se proporciona sucursalId, filtrar productos que tengan inventario en esa sucursal
+    if (sucursalId !== undefined) {
+      query = query.not('inventario.sucursal_id', 'is', null);
+    }
+
+    const { data, error } = await query;
+
     if (error) throw error;
+
+    // Filtrar localmente por sucursal si se proporcionó
+    if (sucursalId !== undefined && data) {
+      return data.filter((p: any) => {
+        if (!p.inventario || p.inventario.length === 0) return false;
+        return p.inventario.some((inv: any) => inv.sucursal_id === sucursalId);
+      });
+    }
+
     return data;
   }
 
   // 3. Crear un Producto y su Inventario inicial
-  async crearProducto(producto: any, stockInicial: number) {
+  async crearProducto(producto: any, stockInicial: number, sucursalId?: number) {
     // A. Insertamos el producto
     const { data: nuevoProd, error: errProd } = await this.client
       .from('productos')
@@ -88,12 +104,13 @@ export class SupabaseService {
 
     if (errProd) throw errProd;
 
-    // B. Le creamos su stock inicial en la sucursal 1 (Sucursal Central)
+    // B. Le creamos su stock inicial en la sucursal especificada (o 1 por defecto)
+    const sucursalIdFinal = sucursalId || 1;
     const { error: errInv } = await this.client
       .from('inventario')
       .insert({
         producto_id: nuevoProd.id,
-        sucursal_id: 1, // Atado a la sucursal matriz por ahora
+        sucursal_id: sucursalIdFinal,
         stock_actual: stockInicial
       });
 
@@ -263,13 +280,13 @@ export class SupabaseService {
   // MONITOREO EN TIEMPO REAL (WebSockets)
   // ==========================================
 
-  escucharVentasEnVivo(callback: (nuevoPedido: any) => void) {
+  escucharVentasEnVivo(callback: (payload: any) => void) {
     const channel = this.client
       .channel('radar-ventas')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'pedidos' },
-        (payload) => { callback(payload.new); }
+        { event: '*', schema: 'public', table: 'pedidos' },
+        (payload) => { callback(payload); }
       )
       .subscribe();
     return channel;
@@ -282,8 +299,9 @@ export class SupabaseService {
   /**
    * Trae el historial de pedidos con JOIN a sucursales y detalle.
    * Si se pasa sucursalId, filtra solo esa sucursal.
+   * Si se pasa usuarioId, filtra solo ese empleado (vendedor).
    */
-  async getPedidos(sucursalId?: number, limite: number = 100) {
+  async getPedidos(sucursalId?: number, usuarioId?: string, limite: number = 100) {
     let query = this.client
       .from('pedidos')
       .select(`
@@ -295,7 +313,8 @@ export class SupabaseService {
         numero_mesa,
         apertura_cajas (
           sucursal_id,
-          sucursales (id, nombre)
+          sucursales (id, nombre),
+          usuario_id
         ),
         pagos (metodo),
         detalle_pedidos (
@@ -308,13 +327,26 @@ export class SupabaseService {
       .order('created_at', { ascending: false })
       .limit(limite);
 
-    if (sucursalId !== undefined) {
-      query = query.eq('apertura_cajas.sucursal_id', sucursalId);
-    }
-
     const { data, error } = await query;
     if (error) throw error;
-    return data ?? [];
+
+    // Filtrar localmente por sucursal y usuario (Supabase no soporta filtrar por relaciones anidadas)
+    let filtered = data ?? [];
+    if (sucursalId !== undefined) {
+      filtered = filtered.filter((p: any) => {
+        const apertura = Array.isArray(p.apertura_cajas) ? p.apertura_cajas[0] : p.apertura_cajas;
+        return apertura?.sucursal_id === sucursalId;
+      });
+    }
+
+    if (usuarioId !== undefined) {
+      filtered = filtered.filter((p: any) => {
+        const apertura = Array.isArray(p.apertura_cajas) ? p.apertura_cajas[0] : p.apertura_cajas;
+        return apertura?.usuario_id === usuarioId;
+      });
+    }
+
+    return filtered;
   }
 
   /**
@@ -419,7 +451,38 @@ export class SupabaseService {
       .insert(detallesAInsertar);
 
     if (errDetalle) throw errDetalle;
-    
+
+    // 4. Actualizar inventario (disminuir stock)
+    for (const detalle of datosPedido.detalles) {
+      const { data: inventario, error: errInv } = await this.adminClient
+        .from('inventario')
+        .select('id, stock_actual')
+        .eq('producto_id', detalle.producto_id)
+        .eq('sucursal_id', datosPedido.sucursal_id)
+        .single();
+
+      if (errInv) {
+        console.error(`Error obteniendo inventario para producto ${detalle.producto_id}:`, errInv);
+        continue;
+      }
+
+      if (!inventario) {
+        console.warn(`No existe inventario para producto ${detalle.producto_id} en sucursal ${datosPedido.sucursal_id}`);
+        continue;
+      }
+
+      const nuevoStock = Math.max(0, inventario.stock_actual - detalle.cantidad);
+
+      const { error: errUpdate } = await this.adminClient
+        .from('inventario')
+        .update({ stock_actual: nuevoStock })
+        .eq('id', inventario.id);
+
+      if (errUpdate) {
+        console.error(`Error actualizando inventario para producto ${detalle.producto_id}:`, errUpdate);
+      }
+    }
+
     return pedidoNuevo;
   }
 

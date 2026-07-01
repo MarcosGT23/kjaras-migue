@@ -263,6 +263,7 @@ export class LoginComponent {
       const msgs: Record<string, string> = {
         'Invalid login credentials': 'Usuario o contraseña incorrectos.',
         'USER_NOT_IN_TABLE': 'Este usuario no tiene acceso asignado.',
+        'USER_BLOCKED': 'Este usuario está bloqueado. Contacte al administrador.',
         'Email not confirmed': 'La cuenta no ha sido confirmada.',
       };
       this.errorMsg.set(msgs[e?.message] ?? 'Error al iniciar sesión. Intenta de nuevo.');

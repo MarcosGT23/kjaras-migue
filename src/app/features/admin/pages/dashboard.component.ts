@@ -395,22 +395,69 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private conectarRadarEnVivo() {
-    this.canalVentas = this.supabase.escucharVentasEnVivo((nuevoPedido: any) => {
-      this.estadisticas.update(statsActuales => ({
-        ...statsActuales,
-        ventasHoy: statsActuales.ventasHoy + 1,
-        ingresosHoy: statsActuales.ingresosHoy + Number(nuevoPedido.total)
-      }));
+    this.canalVentas = this.supabase.escucharVentasEnVivo((payload: any) => {
+      const { eventType, new: nuevo, old: antiguo } = payload;
 
-      const nuevaTransaccion: VentaReciente = {
-        id: nuevoPedido.id,
-        sucursal: 'En proceso...',
-        hora: new Date(nuevoPedido.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        metodo: 'efectivo',
-        total: Number(nuevoPedido.total)
-      };
+      if (eventType === 'INSERT') {
+        // Nuevo pedido: agregar a estadísticas y lista
+        this.estadisticas.update(statsActuales => ({
+          ...statsActuales,
+          ventasHoy: statsActuales.ventasHoy + 1,
+          ingresosHoy: statsActuales.ingresosHoy + Number(nuevo.total)
+        }));
 
-      this.ultimasVentas.update(ventasAnteriores => [nuevaTransaccion, ...ventasAnteriores].slice(0, 10));
+        const nuevaTransaccion: VentaReciente = {
+          id: nuevo.id,
+          sucursal: 'En proceso...',
+          hora: new Date(nuevo.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          metodo: 'efectivo',
+          total: Number(nuevo.total)
+        };
+
+        this.ultimasVentas.update(ventasAnteriores => [nuevaTransaccion, ...ventasAnteriores].slice(0, 10));
+      }
+      else if (eventType === 'UPDATE') {
+        // Pedido actualizado: verificar si se anuló
+        if (antiguo.estado !== nuevo.estado && nuevo.estado === 'anulado') {
+          // Restar de estadísticas
+          this.estadisticas.update(statsActuales => ({
+            ...statsActuales,
+            ventasHoy: Math.max(0, statsActuales.ventasHoy - 1),
+            ingresosHoy: Math.max(0, statsActuales.ingresosHoy - Number(antiguo.total))
+          }));
+
+          // Remover de la lista de últimas ventas
+          this.ultimasVentas.update(ventasAnteriores =>
+            ventasAnteriores.filter(v => v.id !== antiguo.id)
+          );
+        } else if (antiguo.total !== nuevo.total) {
+          // Si cambió el monto, actualizar estadísticas
+          const diferencia = Number(nuevo.total) - Number(antiguo.total);
+          this.estadisticas.update(statsActuales => ({
+            ...statsActuales,
+            ingresosHoy: statsActuales.ingresosHoy + diferencia
+          }));
+
+          // Actualizar en la lista
+          this.ultimasVentas.update(ventasAnteriores =>
+            ventasAnteriores.map(v =>
+              v.id === antiguo.id ? { ...v, total: Number(nuevo.total) } : v
+            )
+          );
+        }
+      }
+      else if (eventType === 'DELETE') {
+        // Pedido eliminado: restar de estadísticas y remover de lista
+        this.estadisticas.update(statsActuales => ({
+          ...statsActuales,
+          ventasHoy: Math.max(0, statsActuales.ventasHoy - 1),
+          ingresosHoy: Math.max(0, statsActuales.ingresosHoy - Number(antiguo.total))
+        }));
+
+        this.ultimasVentas.update(ventasAnteriores =>
+          ventasAnteriores.filter(v => v.id !== antiguo.id)
+        );
+      }
     });
   }
 }
